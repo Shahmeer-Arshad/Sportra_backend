@@ -20,6 +20,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+      redact: ['req.body.password', 'req.headers.authorization'],
       transport:
         env.NODE_ENV !== 'production'
           ? {
