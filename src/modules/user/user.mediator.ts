@@ -5,26 +5,26 @@ import { CreateUserInput, UpdateUserInput } from './user.schema'
  * Acts as the centralized communication hub.
  * Separates route logic from underlying service handlers.
  */
-export class UserMediator {
-  constructor(private readonly userService: UserService) {}
-
-  async send(command: string, payload: any): Promise<any> {
+export const createUserMediator = (userService: UserService) => ({
+  send: async (command: string, payload: any): Promise<any> => {
     switch (command) {
       case 'GetAllUsers':
-        return this.userService.findAll(payload.skip, payload.limit)
+        return userService.findAll(payload.skip, payload.limit)
       case 'GetUserById':
-        return this.userService.findById(payload.id)
+        return userService.findById(payload.id)
       case 'CreateUser':
       case 'SignUpUser':
-        return this.userService.create(payload as CreateUserInput)
+        return userService.create(payload as CreateUserInput)
       case 'LoginUser':
-        return this.userService.login(payload)
+        return userService.login(payload)
       case 'UpdateUser':
-        return this.userService.update(payload.id, payload.data as UpdateUserInput)
+        return userService.update(payload.id, payload.data as UpdateUserInput)
       case 'DeleteUser':
-        return this.userService.delete(payload.id)
+        return userService.delete(payload.id)
       default:
         throw new Error(`Unhandled mediator command: ${command}`)
     }
-  }
-}
+  },
+})
+
+export type UserMediator = ReturnType<typeof createUserMediator>

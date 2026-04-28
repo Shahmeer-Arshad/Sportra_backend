@@ -1,12 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 import { CreateUserInput, UpdateUserInput } from './user.schema'
 
-export class UserRepository {
-  constructor(private readonly prisma: PrismaClient) {}
-
-  async findAll(skip: number, take: number) {
-    const [users, total] = await this.prisma.$transaction([
-      this.prisma.user.findMany({
+export const createUserRepository = (prisma: PrismaClient) => ({
+  findAll: async (skip: number, take: number) => {
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
         skip,
         take,
         orderBy: { createdAt: 'desc' },
@@ -24,13 +22,13 @@ export class UserRepository {
           updatedAt: true,
         },
       }),
-      this.prisma.user.count(),
+      prisma.user.count(),
     ])
     return { users, total }
-  }
+  },
 
-  async findById(id: string) {
-    return this.prisma.user.findUnique({
+  findById: async (id: string) => {
+    return prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -46,34 +44,34 @@ export class UserRepository {
         updatedAt: true,
       },
     })
-  }
+  },
 
-  async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
+  findByEmail: async (email: string) => {
+    return prisma.user.findUnique({
       where: { email },
     })
-  }
+  },
 
-  async findByUsername(username: string) {
-    return this.prisma.user.findUnique({
+  findByUsername: async (username: string) => {
+    return prisma.user.findUnique({
       where: { username },
     })
-  }
+  },
 
-  async findByEmailExcludeId(email: string, id: string) {
-    return this.prisma.user.findFirst({
+  findByEmailExcludeId: async (email: string, id: string) => {
+    return prisma.user.findFirst({
       where: { email, NOT: { id } },
     })
-  }
+  },
 
-  async findByUsernameExcludeId(username: string, id: string) {
-    return this.prisma.user.findFirst({
+  findByUsernameExcludeId: async (username: string, id: string) => {
+    return prisma.user.findFirst({
       where: { username, NOT: { id } },
     })
-  }
+  },
 
-  async create(data: CreateUserInput) {
-    return this.prisma.user.create({
+  create: async (data: CreateUserInput) => {
+    return prisma.user.create({
       data: {
         email: data.email,
         username: data.username,
@@ -96,10 +94,10 @@ export class UserRepository {
         createdAt: true,
       },
     })
-  }
+  },
 
-  async update(id: string, data: UpdateUserInput) {
-    return this.prisma.user.update({
+  update: async (id: string, data: UpdateUserInput) => {
+    return prisma.user.update({
       where: { id },
       data,
       select: {
@@ -113,9 +111,11 @@ export class UserRepository {
         updatedAt: true,
       },
     })
-  }
+  },
 
-  async delete(id: string) {
-    await this.prisma.user.delete({ where: { id } })
-  }
-}
+  delete: async (id: string) => {
+    await prisma.user.delete({ where: { id } })
+  },
+})
+
+export type UserRepository = ReturnType<typeof createUserRepository>

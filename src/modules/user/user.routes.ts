@@ -1,9 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import '@fastify/swagger'
-import { UserController } from './user.controller'
-import { UserService } from './user.service'
-import { UserRepository } from './user.repository'
-import { UserMediator } from './user.mediator'
+import { createUserController } from './user.controller'
+import { createUserService } from './user.service'
+import { createUserRepository } from './user.repository'
+import { createUserMediator } from './user.mediator'
 import { authenticate } from '../../hooks/auth.hook'
 import {
   createUserJsonSchema,
@@ -20,10 +20,10 @@ import { PaginationQuery } from '../../types'
  * User module routes — registered under /api/v1/users
  */
 export async function userRoutes(app: FastifyInstance) {
-  const repository = new UserRepository(app.prisma)
-  const service = new UserService(repository, app.log)
-  const mediator = new UserMediator(service)
-  const controller = new UserController(mediator)
+  const repository = createUserRepository(app.prisma)
+  const service = createUserService(repository, app.log)
+  const mediator = createUserMediator(service)
+  const controller = createUserController(mediator)
 
   // POST /api/v1/users/signup
   app.post<{ Body: CreateUserInput }>(
