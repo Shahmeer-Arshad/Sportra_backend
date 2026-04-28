@@ -8,6 +8,8 @@ import { authenticate } from '../../hooks/auth.hook'
 import {
   createUserJsonSchema,
   updateUserJsonSchema,
+  signUpJsonSchema,
+  loginJsonSchema,
   CreateUserInput,
   UpdateUserInput,
   UserParams,
@@ -22,6 +24,34 @@ export async function userRoutes(app: FastifyInstance) {
   const service = new UserService(repository, app.log)
   const mediator = new UserMediator(service)
   const controller = new UserController(mediator)
+
+  // POST /api/v1/users/signup
+  app.post<{ Body: CreateUserInput }>(
+    '/signup',
+    {
+      schema: {
+        body: signUpJsonSchema.body,
+        response: signUpJsonSchema.response,
+        tags: ['Authentication'],
+        summary: 'User Signup',
+      },
+    },
+    (request, reply) => controller.signUp(request, reply),
+  )
+
+  // POST /api/v1/users/login
+  app.post<{ Body: any }>(
+    '/login',
+    {
+      schema: {
+        body: loginJsonSchema.body,
+        response: loginJsonSchema.response,
+        tags: ['Authentication'],
+        summary: 'User Login',
+      },
+    },
+    (request, reply) => controller.login(request, reply),
+  )
 
   // GET /api/v1/users
   app.get<{ Querystring: PaginationQuery }>(

@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 import { CreateUserInput, UpdateUserInput } from './user.schema'
-import { NotFoundError } from '../../utils/errors'
 
 export class UserRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -14,7 +13,12 @@ export class UserRepository {
         select: {
           id: true,
           email: true,
-          name: true,
+          username: true,
+          firstName: true,
+          middleName: true,
+          lastName: true,
+          phone: true,
+          profileUrl: true,
           role: true,
           createdAt: true,
           updatedAt: true,
@@ -26,23 +30,33 @@ export class UserRepository {
   }
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({
+    return this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
         email: true,
-        name: true,
+        username: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
+        phone: true,
+        profileUrl: true,
         role: true,
         createdAt: true,
         updatedAt: true,
       },
     })
-    return user
   }
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
+    })
+  }
+
+  async findByUsername(username: string) {
+    return this.prisma.user.findUnique({
+      where: { username },
     })
   }
 
@@ -52,18 +66,32 @@ export class UserRepository {
     })
   }
 
+  async findByUsernameExcludeId(username: string, id: string) {
+    return this.prisma.user.findFirst({
+      where: { username, NOT: { id } },
+    })
+  }
+
   async create(data: CreateUserInput) {
     return this.prisma.user.create({
       data: {
         email: data.email,
-        name: data.name,
+        username: data.username,
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        phone: data.phone,
+        profileUrl: data.profileUrl,
         password: data.password, 
         role: data.role,
       },
       select: {
         id: true,
         email: true,
-        name: true,
+        username: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
         role: true,
         createdAt: true,
       },
@@ -77,7 +105,10 @@ export class UserRepository {
       select: {
         id: true,
         email: true,
-        name: true,
+        username: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
         role: true,
         updatedAt: true,
       },

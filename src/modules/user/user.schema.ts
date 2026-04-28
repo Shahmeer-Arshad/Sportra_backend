@@ -5,14 +5,31 @@ import { z } from 'zod'
 // ─────────────────────────────────────────
 export const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(2).max(100).optional(),
+  username: z.string().min(3).max(30),
+  firstName: z.string().min(1).max(50),
+  middleName: z.string().max(50).optional().nullable(),
+  lastName: z.string().min(1).max(50),
+  phone: z.string().max(20).optional().nullable(),
+  profileUrl: z.string().url().optional().nullable().default(null),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['USER', 'ADMIN']).default('USER'),
 })
 
+export const signUpSchema = createUserSchema
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+})
+
 export const updateUserSchema = z.object({
-  name: z.string().min(2).max(100).optional(),
+  firstName: z.string().min(1).max(50).optional(),
+  middleName: z.string().max(50).optional().nullable(),
+  lastName: z.string().min(1).max(50).optional(),
+  phone: z.string().max(20).optional().nullable(),
+  profileUrl: z.string().url().optional().nullable(),
   email: z.string().email().optional(),
+  username: z.string().min(3).max(30).optional(),
 })
 
 export const userParamsSchema = z.object({
@@ -22,13 +39,18 @@ export const userParamsSchema = z.object({
 // ─────────────────────────────────────────
 // JSON Schema for Fastify route validation
 // ─────────────────────────────────────────
-export const createUserJsonSchema = {
+export const signUpJsonSchema = {
   body: {
     type: 'object',
-    required: ['email', 'password'],
+    required: ['email', 'username', 'firstName', 'lastName', 'password'],
     properties: {
       email: { type: 'string', format: 'email' },
-      name: { type: 'string', minLength: 2, maxLength: 100 },
+      username: { type: 'string', minLength: 3, maxLength: 30 },
+      firstName: { type: 'string', minLength: 1, maxLength: 50 },
+      middleName: { type: 'string', maxLength: 50 },
+      lastName: { type: 'string', minLength: 1, maxLength: 50 },
+      phone: { type: 'string', maxLength: 20 },
+      profileUrl: { type: 'string', format: 'uri', default: null },
       password: { type: 'string', minLength: 8 },
       role: { type: 'string', enum: ['USER', 'ADMIN'] },
     },
@@ -44,7 +66,10 @@ export const createUserJsonSchema = {
           properties: {
             id: { type: 'string' },
             email: { type: 'string' },
-            name: { type: 'string' },
+            username: { type: 'string' },
+            firstName: { type: 'string' },
+            middleName: { type: 'string', nullable: true },
+            lastName: { type: 'string' },
             role: { type: 'string' },
             createdAt: { type: 'string' },
           },
@@ -53,6 +78,38 @@ export const createUserJsonSchema = {
     },
   },
 }
+
+export const loginJsonSchema = {
+  body: {
+    type: 'object',
+    required: ['email', 'password'],
+    properties: {
+      email: { type: 'string', format: 'email' },
+      password: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        token: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            email: { type: 'string' },
+            username: { type: 'string' },
+            role: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+}
+
+export const createUserJsonSchema = signUpJsonSchema
 
 export const updateUserJsonSchema = {
   params: {
@@ -65,8 +122,13 @@ export const updateUserJsonSchema = {
   body: {
     type: 'object',
     properties: {
-      name: { type: 'string', minLength: 2, maxLength: 100 },
+      firstName: { type: 'string', minLength: 1, maxLength: 50 },
+      middleName: { type: 'string', maxLength: 50 },
+      lastName: { type: 'string', minLength: 1, maxLength: 50 },
+      phone: { type: 'string', maxLength: 20 },
+      profileUrl: { type: 'string', format: 'uri' },
       email: { type: 'string', format: 'email' },
+      username: { type: 'string', minLength: 3, maxLength: 30 },
     },
   },
 }
@@ -75,5 +137,7 @@ export const updateUserJsonSchema = {
 // TypeScript Types
 // ─────────────────────────────────────────
 export type CreateUserInput = z.infer<typeof createUserSchema>
+export type SignUpInput = z.infer<typeof signUpSchema>
+export type LoginInput = z.infer<typeof loginSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 export type UserParams = z.infer<typeof userParamsSchema>

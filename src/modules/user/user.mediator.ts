@@ -15,7 +15,10 @@ export class UserMediator {
       case 'GetUserById':
         return this.userService.findById(payload.id)
       case 'CreateUser':
+      case 'SignUpUser':
         return this.userService.create(payload as CreateUserInput)
+      case 'LoginUser':
+        return this.userService.login(payload)
       case 'UpdateUser':
         return this.userService.update(payload.id, payload.data as UpdateUserInput)
       case 'DeleteUser':

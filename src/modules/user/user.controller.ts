@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { UserMediator } from './user.mediator'
-import { CreateUserInput, UpdateUserInput, UserParams } from './user.schema'
+import { CreateUserInput, UpdateUserInput, UserParams, LoginInput } from './user.schema'
 import { successResponse, paginatedResponse, parsePagination } from '../../utils/response'
 import { PaginationQuery } from '../../types'
 
@@ -56,5 +56,40 @@ export class UserController {
     request.log.warn({ id: request.params.id }, 'UserController.remove: Deleting user')
     await this.mediator.send('DeleteUser', { id: request.params.id })
     reply.status(204).send()
+  }
+
+  async signUp(
+    request: FastifyRequest<{ Body: CreateUserInput }>,
+    reply: FastifyReply,
+  ) {
+    request.log.info({ email: request.body.email }, 'UserController.signUp: Registering user')
+    const user = await this.mediator.send('SignUpUser', request.body)
+    reply.status(201).send(successResponse(user, 'Registration successful'))
+  }
+
+  async login(
+    request: FastifyRequest<{ Body: LoginInput }>,
+    reply: FastifyReply,
+  ) {
+    request.log.info({ email: request.body.email }, 'UserController.login: Authenticating')
+    const user = await this.mediator.send('LoginUser', request.body)
+
+    const token = await reply.jwtSign({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    })
+
+    reply.send({
+      success: true,
+      message: 'Login successful',
+      token,
+      data: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+    })
   }
 }

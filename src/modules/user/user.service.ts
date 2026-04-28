@@ -1,7 +1,8 @@
 import { FastifyBaseLogger } from 'fastify'
+import bcrypt from 'bcrypt'
 import { UserRepository } from './user.repository'
-import { CreateUserInput, UpdateUserInput } from './user.schema'
-import { ConflictError, NotFoundError } from '../../utils/errors'
+import { CreateUserInput, UpdateUserInput, LoginInput } from './user.schema'
+import { ConflictError, NotFoundError, UnauthorizedError } from '../../utils/errors'
 
 /**
  * Pure business logic layer. 
@@ -27,10 +28,36 @@ export class UserService {
 
   async create(data: CreateUserInput) {
     this.logger.info({ email: data.email }, 'UserService.create: Creating user')
-    const existing = await this.repository.findByEmail(data.email)
-    if (existing) throw new ConflictError(`Email "${data.email}" already in use`)
+    
+    const existingEmail = await this.repository.findByEmail(data.email)
+    if (existingEmail) throw new ConflictError(`Email "${data.email}" already in use`)
 
-    return this.repository.create(data)
+    const existingUsername = await this.repository.findByUsername(data.username)
+    if (existingUsername) throw new ConflictError(`Username "${data.username}" already in use`)
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(data.password, 10)
+
+    return this.repository.create({
+      ...data,
+      password: hashedPassword,
+    })
+  }
+
+  async login(data: LoginInput) {
+    this.logger.info({ email: data.email }, 'UserService.login: Authenticating user')
+    
+    const user = await this.repository.findByEmail(data.email)
+    if (!user) {
+      throw new UnauthorizedError('Invalid email or password')
+    }
+
+    const isValid = await bcrypt.compare(data.password, user.password)
+    if (!isValid) {
+      throw new UnauthorizedError('Invalid email or password')
+    }
+
+    return user
   }
 
   async update(id: string, data: UpdateUserInput) {
@@ -40,6 +67,11 @@ export class UserService {
     if (data.email) {
       const conflict = await this.repository.findByEmailExcludeId(data.email, id)
       if (conflict) throw new ConflictError(`Email "${data.email}" already in use`)
+    }
+
+    if (data.username) {
+      const conflict = await this.repository.findByUsernameExcludeId(data.username, id)
+      if (conflict) throw new ConflictError(`Username "${data.username}" already in use`)
     }
 
     return this.repository.update(id, data)
