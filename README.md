@@ -8,17 +8,15 @@ A production-ready **Fastify + TypeScript + Prisma** boilerplate with PostgreSQL
 
 | Tool | Purpose |
 |---|---|
-| **Fastify** | High-performance HTTP framework |
+| **Fastify v5** | High-performance HTTP framework |
 | **TypeScript** | Full type safety |
 | **Prisma** | ORM + auto migrations |
+| **Vitest** | Blazing-fast test runner |
 | **PostgreSQL** | Relational database |
 | **Adminer** | Database admin UI |
 | **Docker Compose** | Local infra orchestration |
-| **Zod** | Runtime env validation |
+| **Zod** | Schema & runtime validation |
 | **@fastify/jwt** | JWT authentication |
-| **@fastify/swagger** | Auto OpenAPI docs |
-| **@fastify/helmet** | Security headers |
-| **@fastify/rate-limit** | Rate limiting |
 
 ---
 
@@ -31,25 +29,29 @@ node-starter/
 │   │   └── env.ts                  # Env validation (Zod)
 │   ├── modules/
 │   │   └── user/
-│   │       ├── user.controller.ts  # Request/response layer
-│   │       ├── user.routes.ts      # Route definitions + Swagger
-│   │       ├── user.schema.ts      # Zod + JSON schema
-│   │       └── user.service.ts     # Business logic + DB queries
+│   │       ├── user.controller.ts  # Route handlers
+│   │       ├── user.mediator.ts    # Operations controller
+│   │       ├── user.repository.ts  # Database state changes
+│   │       ├── user.routes.ts      # Fastify routing registers
+│   │       ├── user.schema.ts      # Validations
+│   │       ├── user.service.ts     # Business logic
 │   ├── plugins/
 │   │   ├── cors.ts
 │   │   ├── jwt.ts
-│   │   ├── prisma.ts               # Prisma client plugin
-│   │   ├── security.ts             # Helmet + rate limiting
+│   │   ├── prisma.ts               
+│   │   ├── security.ts             
 │   │   └── swagger.ts
-│   ├── middlewares/
-│   │   └── auth.middleware.ts      # JWT guard
+│   ├── hooks/
+│   │   └── auth.hook.ts            # Authentication interceptors
 │   ├── utils/
-│   │   ├── errors.ts               # Custom error classes
-│   │   └── response.ts             # Response helpers
+│   │   ├── errors.ts               
+│   │   └── response.ts             
 │   ├── types/
-│   │   └── index.ts                # Global TS types
-│   ├── app.ts                      # App bootstrap
-│   └── server.ts                   # Entry point
+│   │   └── index.ts                
+│   ├── app.ts                      
+│   └── server.ts                   
+├── tests/
+│   └── user.test.ts                # Integrated tests
 ├── prisma/
 │   ├── schema.prisma               # DB schema
 │   └── seed.ts                     # Seed script
@@ -103,13 +105,10 @@ npm run dev
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/health` | No | Health check |
-| `GET` | `/docs` | No | Swagger UI |
-| `POST` | `/api/v1/users` | No | Create user |
-| `GET` | `/api/v1/users` | JWT | List users (paginated) |
-| `GET` | `/api/v1/users/:id` | JWT | Get user by ID |
-| `PATCH` | `/api/v1/users/:id` | JWT | Update user |
-| `DELETE` | `/api/v1/users/:id` | JWT | Delete user |
+| `GET` | `/docs` | No | Auto Swagger UI |
+| `POST` | `/api/v1/users/signup` | No | Public registration |
+| `POST` | `/api/v1/users/login` | No | Emits active JWT |
+| `GET` | `/api/v1/users` | JWT | Paginated list |
 
 ---
 
