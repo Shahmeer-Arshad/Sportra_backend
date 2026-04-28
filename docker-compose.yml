@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: node_starter_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-node_starter}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - node_starter_net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-node_starter}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Adminer — Database Management UI
+  # Access at: http://localhost:8080
+  # Server: postgres | User: postgres | Pass: postgres
+  # ─────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: node_starter_adminer
+    restart: unless-stopped
+    ports:
+      - '${ADMINER_PORT:-8080}:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - node_starter_net
+
+  # ─────────────────────────────────────────
+  # App (uncomment to run fully containerized)
+  # ─────────────────────────────────────────
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: node_starter_app
+  #   restart: unless-stopped
+  #   ports:
+  #     - '${PORT:-3000}:3000'
+  #   environment:
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-node_starter}
+  #     JWT_SECRET: ${JWT_SECRET:-supersecretkey}
+  #     NODE_ENV: production
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - node_starter_net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  node_starter_net:
+    driver: bridge
