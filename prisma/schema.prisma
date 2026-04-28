@@ -29,7 +29,7 @@ model User {
   middleName String?  @map("middle_name")
   lastName   String   @map("last_name")
   phone      String?  @unique
-  profileUrl String?  @default(null) @map("profile_url")
+  profileUrl String?  @map("profile_url")
   password   String
   role       Role     @default(USER)
   createdAt  DateTime @default(now()) @map("created_at")
