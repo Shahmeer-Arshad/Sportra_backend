@@ -66,31 +66,35 @@ export async function buildApp(): Promise<FastifyInstance> {
       })
     }
 
-    // Fastify validation errors
-    if (error.validation) {
+    // Cast to any for Fastify-specific and JWT error shapes
+    // (Fastify's error handler receives FastifyError which extends Error but TS types it as unknown)
+    const err = error as any
+
+    // Fastify validation errors — Fastify attaches .validation to its own error type
+    if (err.validation) {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Validation Error',
         message: 'Invalid request data',
-        details: error.validation,
+        details: err.validation,
       })
     }
 
     // JWT errors
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return reply.status(401).send({
         statusCode: 401,
         error: 'Unauthorized',
-        message: error.message,
+        message: err.message,
       })
     }
 
-    // Unhandled errors
+    // Unhandled errors — hide details in production
     app.log.error(error)
     return reply.status(500).send({
       statusCode: 500,
       error: 'Internal Server Error',
-      message: env.NODE_ENV === 'production' ? 'Something went wrong' : error.message,
+      message: env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
     })
   })
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { UserMediator } from './user.mediator'
 import { CreateUserInput, UpdateUserInput, UserParams, LoginInput } from './user.schema'
@@ -72,8 +73,8 @@ export const createUserController = (mediator: UserMediator) => ({
     request.log.info({ email: request.body.email }, 'UserController.login: Authenticating')
     const user = await mediator.send('LoginUser', request.body)
 
-    // Generate JTI for refresh token
-    const jti = Math.random().toString(36).substring(2, 15)
+    // Generate cryptographically random JTI for refresh token
+    const jti = randomUUID()
 
     // Generate Access Token
     const accessToken = await reply.accessJwtSign({
@@ -123,7 +124,7 @@ export const createUserController = (mediator: UserMediator) => ({
 
   refresh: async (request: FastifyRequest, reply: FastifyReply) => {
     request.log.info('UserController.refresh: Refreshing access token')
-    
+
     // 1. Extract refresh token from cookie
     const refreshToken = request.cookies.refreshToken
     if (!refreshToken) {
@@ -136,14 +137,38 @@ export const createUserController = (mediator: UserMediator) => ({
     try {
       // 2. Verify and decode the refresh token
       const decoded = await request.refreshJwtVerify<{ sub: string; jti: string }>()
-      
-      // 3. Verify existence and validity in DB
+
+      // 3. Verify existence and validity in DB (also validates hash)
       const user = await mediator.send('VerifyRefreshToken', {
         jti: decoded.jti,
         token: refreshToken,
       })
 
-      // 4. Generate new Access Token
+      // 4. Rotate: revoke old refresh token
+      await mediator.send('RevokeRefreshToken', { jti: decoded.jti })
+
+      // 5. Issue new refresh token (rotation)
+      const newJti = randomUUID()
+      const newRefreshToken = await reply.refreshJwtSign({ sub: user.id, jti: newJti })
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + 7)
+      await mediator.send('SaveRefreshToken', {
+        userId: user.id,
+        jti: newJti,
+        token: newRefreshToken,
+        expiresAt,
+      })
+
+      // 6. Set new refresh token cookie
+      reply.setCookie('refreshToken', newRefreshToken, {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7,
+      })
+
+      // 7. Issue new access token
       const accessToken = await reply.accessJwtSign({
         sub: user.id,
         email: user.email,

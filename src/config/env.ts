@@ -15,6 +15,8 @@ const envSchema = z.object({
   REFRESH_TOKEN_SECRET: z.string().min(16, 'REFRESH_TOKEN_SECRET must be at least 16 characters'),
   ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
+  // Comma-separated list of allowed CORS origins, e.g. "http://localhost:3000,https://myapp.com"
+  ALLOWED_ORIGINS: z.string().optional(),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

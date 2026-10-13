@@ -5,6 +5,7 @@ import { createUserService } from './user.service'
 import { createUserRepository } from './user.repository'
 import { createUserMediator } from './user.mediator'
 import { authenticate } from '../../hooks/auth.hook'
+import { authorize } from '../../hooks/authorize.hook'
 import {
   createUserJsonSchema,
   updateUserJsonSchema,
@@ -134,15 +135,17 @@ export async function userRoutes(app: FastifyInstance) {
     (request, reply) => controller.getById(request, reply),
   )
 
-  // POST /api/v1/users
+  // POST /api/v1/users  — Admin only: create any user with any role
   app.post<{ Body: CreateUserInput }>(
     '/',
     {
+      preHandler: [authenticate, authorize('ADMIN')],
       schema: {
         body: createUserJsonSchema.body,
         response: createUserJsonSchema.response,
         tags: ['Users'],
-        summary: 'Create a new user',
+        summary: 'Create a new user (Admin only)',
+        security: [{ bearerAuth: [] }],
       },
     },
     (request, reply) => controller.create(request, reply),
@@ -164,14 +167,14 @@ export async function userRoutes(app: FastifyInstance) {
     (request, reply) => controller.update(request, reply),
   )
 
-  // DELETE /api/v1/users/:id
+  // DELETE /api/v1/users/:id  — Admin only
   app.delete<{ Params: UserParams }>(
     '/:id',
     {
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorize('ADMIN')],
       schema: {
         tags: ['Users'],
-        summary: 'Delete a user',
+        summary: 'Delete a user (Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',

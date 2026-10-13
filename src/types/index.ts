@@ -1,5 +1,6 @@
 import { Role, PrismaClient } from '@prisma/client'
 import { FastifyJWT } from '@fastify/jwt'
+import '@fastify/cookie'
 
 // ─────────────────────────────────────────
 // JWT Payload

@@ -1,8 +1,12 @@
 import { buildApp } from './app'
 import { env } from './config/env'
+import { FastifyInstance } from 'fastify'
+
+// Hold a reference so signal handlers can close the app gracefully
+let app: FastifyInstance
 
 async function main() {
-  const app = await buildApp()
+  app = await buildApp()
 
   try {
     await app.listen({
@@ -27,15 +31,20 @@ async function main() {
   }
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down...')
+/**
+ * Graceful shutdown — closes Fastify app first (triggers all onClose hooks
+ * including prisma.$disconnect) then exits.
+ */
+async function shutdown(signal: string) {
+  console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`)
+  if (app) {
+    await app.close()
+    console.log('✅ App closed cleanly.')
+  }
   process.exit(0)
-})
+}
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down...')
-  process.exit(0)
-})
+process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
 
 main()

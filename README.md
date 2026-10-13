@@ -1,6 +1,6 @@
 # Node Starter 🚀
 
-A production-ready **Fastify + TypeScript + Prisma** boilerplate with PostgreSQL, Adminer, Docker Compose, Swagger docs, JWT auth, and more.
+A production-ready **Fastify + TypeScript + Prisma** boilerplate with PostgreSQL, Adminer, Docker Compose, Swagger docs, dual JWT auth with refresh token rotation, RBAC, and more.
 
 ---
 
@@ -16,7 +16,8 @@ A production-ready **Fastify + TypeScript + Prisma** boilerplate with PostgreSQL
 | **Adminer** | Database admin UI |
 | **Docker Compose** | Local infra orchestration |
 | **Zod** | Schema & runtime validation |
-| **@fastify/jwt** | JWT authentication |
+| **@fastify/jwt** | Dual-namespace JWT authentication |
+| **bcrypt** | Password + refresh token hashing |
 
 ---
 
@@ -26,38 +27,41 @@ A production-ready **Fastify + TypeScript + Prisma** boilerplate with PostgreSQL
 node-starter/
 ├── src/
 │   ├── config/
-│   │   └── env.ts                  # Env validation (Zod)
+│   │   └── env.ts                  # Env validation (Zod) — fails fast on bad config
 │   ├── modules/
 │   │   └── user/
-│   │       ├── user.controller.ts  # Route handlers
-│   │       ├── user.mediator.ts    # Operations controller
-│   │       ├── user.repository.ts  # Database state changes
-│   │       ├── user.routes.ts      # Fastify routing registers
-│   │       ├── user.schema.ts      # Validations
-│   │       ├── user.service.ts     # Business logic
+│   │       ├── user.controller.ts  # Route handlers (thin layer)
+│   │       ├── user.mediator.ts    # Command dispatcher
+│   │       ├── user.repository.ts  # Prisma DB operations
+│   │       ├── user.routes.ts      # Fastify route registration
+│   │       ├── user.schema.ts      # Zod + JSON Schema validations
+│   │       └── user.service.ts     # Business logic
 │   ├── plugins/
-│   │   ├── cors.ts
-│   │   ├── jwt.ts
-│   │   ├── prisma.ts               
-│   │   ├── security.ts             
-│   │   └── swagger.ts
+│   │   ├── cors.ts                 # CORS with origin whitelist
+│   │   ├── jwt.ts                  # Dual JWT (access + refresh namespaces)
+│   │   ├── prisma.ts               # Prisma client + lifecycle management
+│   │   ├── security.ts             # Helmet + rate-limiting
+│   │   └── swagger.ts              # OpenAPI 3.0 docs at /docs
 │   ├── hooks/
-│   │   └── auth.hook.ts            # Authentication interceptors
+│   │   ├── auth.hook.ts            # JWT authentication preHandler
+│   │   └── authorize.hook.ts       # Role-based authorization preHandler
 │   ├── utils/
-│   │   ├── errors.ts               
-│   │   └── response.ts             
+│   │   ├── errors.ts               # AppError hierarchy (400/401/403/404/409/500)
+│   │   └── response.ts             # Standardized response envelopes
 │   ├── types/
-│   │   └── index.ts                
-│   ├── app.ts                      
-│   └── server.ts                   
+│   │   └── index.ts                # Fastify type augmentations + shared interfaces
+│   ├── app.ts                      # App builder (plugins, routes, error handler)
+│   └── server.ts                   # Entry point + graceful shutdown
 ├── tests/
-│   └── user.test.ts                # Integrated tests
+│   ├── setup.ts                    # Vitest global setup (env overrides, test DB)
+│   └── user.test.ts                # Integration tests
 ├── prisma/
-│   ├── schema.prisma               # DB schema
-│   └── seed.ts                     # Seed script
-├── docker-compose.yml              # PostgreSQL + Adminer
+│   ├── schema.prisma               # DB schema (User + RefreshToken models)
+│   └── seed.ts                     # Seed script (admin user)
+├── vitest.config.ts                # Test runner configuration
+├── docker-compose.yml              # PostgreSQL + Adminer services
 ├── Dockerfile                      # Multi-stage production image
-├── .env                            # Environment variables
+├── .env.example                    # Environment variables template
 └── tsconfig.json
 ```
 
@@ -71,7 +75,14 @@ node-starter/
 npm install
 ```
 
-### 2. Start the database
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env and set strong secrets for ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET
+```
+
+### 3. Start the database
 
 ```bash
 docker compose up -d
@@ -81,19 +92,20 @@ docker compose up -d
 > Adminer UI: [http://localhost:8080](http://localhost:8080)
 > Adminer login → Server: `postgres` | User: `postgres` | Pass: `postgres` | DB: `node_starter`
 
-### 3. Run database migrations
+### 4. Run database migrations
 
 ```bash
 npm run db:migrate
 ```
 
-### 4. (Optional) Seed the database
+### 5. (Optional) Seed the database
 
 ```bash
 npm run db:seed
+# Creates admin@example.com / Admin@1234
 ```
 
-### 5. Start the dev server
+### 6. Start the dev server
 
 ```bash
 npm run dev
@@ -103,12 +115,60 @@ npm run dev
 
 ## API Endpoints
 
+### Authentication
+
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/docs` | No | Auto Swagger UI |
-| `POST` | `/api/v1/users/signup` | No | Public registration |
-| `POST` | `/api/v1/users/login` | No | Emits active JWT |
-| `GET` | `/api/v1/users` | JWT | Paginated list |
+| `POST` | `/api/v1/users/signup` | No | Register a new user |
+| `POST` | `/api/v1/users/login` | No | Login — returns access token + sets refresh cookie |
+| `POST` | `/api/v1/users/refresh` | Cookie | Rotate refresh token, issue new access token |
+| `POST` | `/api/v1/users/logout` | Cookie | Revoke refresh token, clear cookie |
+
+### Users (JWT required)
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/users` | Any | Paginated user list |
+| `GET` | `/api/v1/users/:id` | Any | Get user by ID |
+| `PATCH` | `/api/v1/users/:id` | Any | Update user profile |
+| `POST` | `/api/v1/users` | ADMIN | Create a user with any role |
+| `DELETE` | `/api/v1/users/:id` | ADMIN | Delete a user |
+
+### Other
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `GET` | `/docs` | Swagger UI |
+
+---
+
+## Auth Flow
+
+```
+Login ──► Access Token (15m, Bearer header)
+     └──► Refresh Token (7d, HttpOnly cookie)
+
+Refresh ──► Revoke old refresh token (rotation)
+       └──► New access token + new refresh token cookie
+```
+
+Refresh tokens are **rotated on every use** — each call to `/refresh` invalidates the old token and issues a fresh one, preventing replay attacks.
+
+---
+
+## Adding Authorization to a Route
+
+```ts
+import { authenticate } from '../../hooks/auth.hook'
+import { authorize } from '../../hooks/authorize.hook'
+
+// Any authenticated user
+app.get('/profile', { preHandler: [authenticate] }, handler)
+
+// Admin only
+app.delete('/:id', { preHandler: [authenticate, authorize('ADMIN')] }, handler)
+```
 
 ---
 
@@ -119,6 +179,7 @@ npm run dev
 | `npm run dev` | Start dev server with hot reload |
 | `npm run build` | Build for production |
 | `npm start` | Run production build |
+| `npm test` | Run all tests |
 | `npm run db:migrate` | Run migrations (dev) |
 | `npm run db:migrate:prod` | Run migrations (production) |
 | `npm run db:generate` | Regenerate Prisma client |
@@ -140,20 +201,26 @@ cp .env.example .env
 |---|---|---|
 | `NODE_ENV` | Environment | `development` |
 | `PORT` | Server port | `3000` |
+| `HOST` | Bind host | `0.0.0.0` |
 | `DATABASE_URL` | Prisma connection string | — |
-| `JWT_SECRET` | JWT signing secret | — |
-| `JWT_EXPIRES_IN` | Token expiry | `7d` |
+| `ACCESS_TOKEN_SECRET` | JWT signing secret (min 16 chars) | — |
+| `REFRESH_TOKEN_SECRET` | Refresh JWT secret (min 16 chars, different from access) | — |
+| `ACCESS_TOKEN_EXPIRES_IN` | Access token expiry | `15m` |
+| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token expiry | `7d` |
+| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:3000` |
 
 ---
 
 ## Adding a New Module
 
-1. Create a new folder `src/modules/<feature>/`
+1. Create `src/modules/<feature>/`
 2. Add `<feature>.schema.ts` — Zod + JSON Schema
-3. Add `<feature>.service.ts` — Prisma queries
-4. Add `<feature>.controller.ts` — Request/reply handling
-5. Add `<feature>.routes.ts` — Register with Fastify
-6. Register routes in `src/app.ts`
+3. Add `<feature>.repository.ts` — Prisma queries
+4. Add `<feature>.service.ts` — Business logic
+5. Add `<feature>.mediator.ts` — Command dispatcher
+6. Add `<feature>.controller.ts` — Request/reply handling
+7. Add `<feature>.routes.ts` — Register with Fastify
+8. Register routes in `src/app.ts`
 
 ---
 
@@ -164,4 +231,4 @@ docker build -t node-starter .
 docker run -p 3000:3000 --env-file .env node-starter
 ```
 
-Or use the commented-out `app` service in `docker-compose.yml`.
+Or uncomment the `app` service in `docker-compose.yml` for a fully containerized setup.
