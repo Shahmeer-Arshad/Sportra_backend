@@ -72,22 +72,114 @@ export const createUserController = (mediator: UserMediator) => ({
     request.log.info({ email: request.body.email }, 'UserController.login: Authenticating')
     const user = await mediator.send('LoginUser', request.body)
 
-    const token = await reply.jwtSign({
+    // Generate JTI for refresh token
+    const jti = Math.random().toString(36).substring(2, 15)
+
+    // Generate Access Token
+    const accessToken = await reply.accessJwtSign({
       sub: user.id,
       email: user.email,
       role: user.role,
     })
 
+    // Generate Refresh Token
+    const refreshToken = await reply.refreshJwtSign({
+      sub: user.id,
+      jti,
+    })
+
+    // Save Refresh Token to DB (hashed)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7) // 7 days matches env REFRESH_TOKEN_EXPIRES_IN
+
+    await mediator.send('SaveRefreshToken', {
+      userId: user.id,
+      jti,
+      token: refreshToken,
+      expiresAt,
+    })
+
+    // Set Refresh Token in HttpOnly Cookie
+    reply.setCookie('refreshToken', refreshToken, {
+      path: '/',
+      httpOnly: true,
+      secure: true, // Only send over HTTPS
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+    })
+
     reply.send({
       success: true,
       message: 'Login successful',
-      token,
+      accessToken,
       data: {
         id: user.id,
         email: user.email,
         username: user.username,
         role: user.role,
       },
+    })
+  },
+
+  refresh: async (request: FastifyRequest, reply: FastifyReply) => {
+    request.log.info('UserController.refresh: Refreshing access token')
+    
+    // 1. Extract refresh token from cookie
+    const refreshToken = request.cookies.refreshToken
+    if (!refreshToken) {
+      return reply.status(401).send({
+        success: false,
+        message: 'Refresh token missing',
+      })
+    }
+
+    try {
+      // 2. Verify and decode the refresh token
+      const decoded = await request.refreshJwtVerify<{ sub: string; jti: string }>()
+      
+      // 3. Verify existence and validity in DB
+      const user = await mediator.send('VerifyRefreshToken', {
+        jti: decoded.jti,
+        token: refreshToken,
+      })
+
+      // 4. Generate new Access Token
+      const accessToken = await reply.accessJwtSign({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      })
+
+      reply.send({
+        success: true,
+        accessToken,
+      })
+    } catch (err) {
+      request.log.error(err, 'UserController.refresh: Failed')
+      reply.status(401).send({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      })
+    }
+  },
+
+  logout: async (request: FastifyRequest, reply: FastifyReply) => {
+    request.log.info('UserController.logout: Logging out')
+    const refreshToken = request.cookies.refreshToken
+
+    if (refreshToken) {
+      try {
+        const decoded = await request.refreshJwtVerify<{ jti: string }>()
+        await mediator.send('RevokeRefreshToken', { jti: decoded.jti })
+      } catch (err) {
+        // Ignore token decode errors on logout
+      }
+    }
+
+    reply.clearCookie('refreshToken', { path: '/' })
+    reply.send({
+      success: true,
+      message: 'Logged out successfully',
     })
   },
 })

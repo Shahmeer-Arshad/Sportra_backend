@@ -94,7 +94,7 @@ export const loginJsonSchema = {
       properties: {
         success: { type: 'boolean' },
         message: { type: 'string' },
-        token: { type: 'string' },
+        accessToken: { type: 'string' },
         data: {
           type: 'object',
           properties: {

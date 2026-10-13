@@ -3,6 +3,7 @@ import { env } from './config/env'
 import { AppError } from './utils/errors'
 
 // Plugins
+import fastifyCookie from '@fastify/cookie'
 import prismaPlugin from './plugins/prisma'
 import jwtPlugin from './plugins/jwt'
 import corsPlugin from './plugins/cors'
@@ -49,6 +50,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(securityPlugin)
   await app.register(swaggerPlugin)
   await app.register(prismaPlugin)
+  await app.register(fastifyCookie)
   await app.register(jwtPlugin)
 
   // ─────────────────────────────────────────

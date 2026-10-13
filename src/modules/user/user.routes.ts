@@ -53,6 +53,48 @@ export async function userRoutes(app: FastifyInstance) {
     (request, reply) => controller.login(request, reply),
   )
 
+  // POST /api/v1/users/refresh
+  app.post(
+    '/refresh',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Refresh Access Token',
+        description: 'Issues a new access token using the refresh token stored in cookies.',
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              accessToken: { type: 'string' },
+            },
+          },
+          401: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    (request, reply) => controller.refresh(request, reply),
+  )
+
+  // POST /api/v1/users/logout
+  app.post(
+    '/logout',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Logout User',
+        description: 'Clears refresh token from cookies and revokes it in the database.',
+      },
+    },
+    (request, reply) => controller.logout(request, reply),
+  )
+
   // GET /api/v1/users
   app.get<{ Querystring: PaginationQuery }>(
     '/',

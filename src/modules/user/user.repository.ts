@@ -116,6 +116,37 @@ export const createUserRepository = (prisma: PrismaClient) => ({
   delete: async (id: string) => {
     await prisma.user.delete({ where: { id } })
   },
+
+  // Refresh Token Methods
+  saveRefreshToken: async (userId: string, jti: string, hashedToken: string, expiresAt: Date) => {
+    return prisma.refreshToken.create({
+      data: {
+        userId,
+        jti,
+        hashedToken,
+        expiresAt,
+      },
+    })
+  },
+
+  findRefreshToken: async (jti: string) => {
+    return prisma.refreshToken.findUnique({
+      where: { jti },
+      include: { user: true },
+    })
+  },
+
+  deleteRefreshToken: async (jti: string) => {
+    return prisma.refreshToken.delete({
+      where: { jti },
+    })
+  },
+
+  deleteAllUserRefreshTokens: async (userId: string) => {
+    return prisma.refreshToken.deleteMany({
+      where: { userId },
+    })
+  },
 })
 
 export type UserRepository = ReturnType<typeof createUserRepository>

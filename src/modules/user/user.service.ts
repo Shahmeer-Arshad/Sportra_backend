@@ -83,6 +83,44 @@ export const createUserService = (
       await findById(id) // throws 404 if not found
       await repository.delete(id)
     },
+
+    // Refresh Token Business Logic
+    saveRefreshToken: async (userId: string, jti: string, token: string, expiresAt: Date) => {
+      logger.debug({ userId, jti }, 'UserService.saveRefreshToken: Saving new refresh token')
+      const hashedToken = await bcrypt.hash(token, 10)
+      return repository.saveRefreshToken(userId, jti, hashedToken, expiresAt)
+    },
+
+    verifyRefreshToken: async (jti: string, token: string) => {
+      logger.debug({ jti }, 'UserService.verifyRefreshToken: Verifying refresh token')
+      const storedToken = await repository.findRefreshToken(jti)
+      
+      if (!storedToken) {
+        throw new UnauthorizedError('Refresh token not found or revoked')
+      }
+
+      const now = new Date()
+      if (storedToken.expiresAt < now) {
+        await repository.deleteRefreshToken(jti)
+        throw new UnauthorizedError('Refresh token expired')
+      }
+
+      const isValid = await bcrypt.compare(token, storedToken.hashedToken)
+      if (!isValid) {
+        throw new UnauthorizedError('Invalid refresh token')
+      }
+
+      return storedToken.user
+    },
+
+    revokeRefreshToken: async (jti: string) => {
+      logger.info({ jti }, 'UserService.revokeRefreshToken: Revoking token')
+      try {
+        await repository.deleteRefreshToken(jti)
+      } catch (err) {
+        // Ignore if already deleted
+      }
+    },
   }
 }
 

@@ -19,6 +19,14 @@ declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
   }
+  interface FastifyRequest {
+    accessJwtVerify: <T>(options?: any) => Promise<T>
+    refreshJwtVerify: <T>(options?: any) => Promise<T>
+  }
+  interface FastifyReply {
+    accessJwtSign: (payload: any, options?: any) => Promise<string>
+    refreshJwtSign: (payload: any, options?: any) => Promise<string>
+  }
 }
 
 declare module '@fastify/jwt' {

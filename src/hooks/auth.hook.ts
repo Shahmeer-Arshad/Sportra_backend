@@ -13,7 +13,7 @@ export async function authenticate(
   reply: FastifyReply,
 ): Promise<void> {
   try {
-    await request.jwtVerify()
+    await request.accessJwtVerify()
   } catch (err) {
     reply.status(401).send({
       statusCode: 401,

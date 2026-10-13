@@ -21,6 +21,12 @@ export const createUserMediator = (userService: UserService) => ({
         return userService.update(payload.id, payload.data as UpdateUserInput)
       case 'DeleteUser':
         return userService.delete(payload.id)
+      case 'SaveRefreshToken':
+        return userService.saveRefreshToken(payload.userId, payload.jti, payload.token, payload.expiresAt)
+      case 'VerifyRefreshToken':
+        return userService.verifyRefreshToken(payload.jti, payload.token)
+      case 'RevokeRefreshToken':
+        return userService.revokeRefreshToken(payload.jti)
       default:
         throw new Error(`Unhandled mediator command: ${command}`)
     }
