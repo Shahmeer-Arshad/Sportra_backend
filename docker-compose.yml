@@ -45,6 +45,54 @@ services:
       - sportra_net
 
   # ─────────────────────────────────────────
+  # Redis (cache, rate limits, realtime hot lane later)
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sportra_redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-56379}:6379'
+    networks:
+      - sportra_net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # RabbitMQ (event bus). Management UI: http://localhost:55673 (guest / guest)
+  # ─────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: sportra_rabbitmq
+    restart: unless-stopped
+    ports:
+      - '${RABBITMQ_PORT:-55672}:5672'
+      - '${RABBITMQ_UI_PORT:-55673}:15672'
+    networks:
+      - sportra_net
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # MailHog (catches emails in dev). UI: http://localhost:58025
+  # ─────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: sportra_mailhog
+    restart: unless-stopped
+    ports:
+      - '${SMTP_PORT:-51025}:1025'
+      - '${MAILHOG_UI_PORT:-58025}:8025'
+    networks:
+      - sportra_net
+
+  # ─────────────────────────────────────────
   # App (uncomment to run fully containerized)
   # ─────────────────────────────────────────
   # app:

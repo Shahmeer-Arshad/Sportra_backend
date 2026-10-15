@@ -5,13 +5,10 @@ import { CreateUserInput, UpdateUserInput, LoginInput } from './user.schema'
 import { ConflictError, NotFoundError, UnauthorizedError } from '../../utils/errors'
 
 /**
- * Pure business logic layer. 
+ * Pure business logic layer.
  * Delegates state changes to UserRepository.
  */
-export const createUserService = (
-  repository: UserRepository,
-  logger: FastifyBaseLogger
-) => {
+export const createUserService = (repository: UserRepository, logger: FastifyBaseLogger) => {
   const findById = async (id: string) => {
     logger.debug({ id }, 'UserService.findById: Finding user')
     const user = await repository.findById(id)
@@ -29,7 +26,7 @@ export const createUserService = (
 
     create: async (data: CreateUserInput) => {
       logger.info({ email: data.email }, 'UserService.create: Creating user')
-      
+
       const existingEmail = await repository.findByEmail(data.email)
       if (existingEmail) throw new ConflictError(`Email "${data.email}" already in use`)
 
@@ -47,7 +44,7 @@ export const createUserService = (
 
     login: async (data: LoginInput) => {
       logger.info({ email: data.email }, 'UserService.login: Authenticating user')
-      
+
       const user = await repository.findByEmail(data.email)
       if (!user) {
         throw new UnauthorizedError('Invalid email or password')
@@ -94,7 +91,7 @@ export const createUserService = (
     verifyRefreshToken: async (jti: string, token: string) => {
       logger.debug({ jti }, 'UserService.verifyRefreshToken: Verifying refresh token')
       const storedToken = await repository.findRefreshToken(jti)
-      
+
       if (!storedToken) {
         throw new UnauthorizedError('Refresh token not found or revoked')
       }
@@ -117,7 +114,7 @@ export const createUserService = (
       logger.info({ jti }, 'UserService.revokeRefreshToken: Revoking token')
       try {
         await repository.deleteRefreshToken(jti)
-      } catch (err) {
+      } catch {
         // Ignore if already deleted
       }
     },

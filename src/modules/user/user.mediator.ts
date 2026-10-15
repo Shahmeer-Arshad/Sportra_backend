@@ -22,7 +22,12 @@ export const createUserMediator = (userService: UserService) => ({
       case 'DeleteUser':
         return userService.delete(payload.id)
       case 'SaveRefreshToken':
-        return userService.saveRefreshToken(payload.userId, payload.jti, payload.token, payload.expiresAt)
+        return userService.saveRefreshToken(
+          payload.userId,
+          payload.jti,
+          payload.token,
+          payload.expiresAt,
+        )
       case 'VerifyRefreshToken':
         return userService.verifyRefreshToken(payload.jti, payload.token)
       case 'RevokeRefreshToken':

@@ -16,7 +16,13 @@ const corsPlugin = fp(async (app: FastifyInstance) => {
       if (!origin || allowedOrigins.includes(origin)) {
         cb(null, true)
       } else {
-        cb(new Error('Not allowed by CORS'), false)
+        cb(
+          Object.assign(new Error('Not allowed by CORS'), {
+            statusCode: 403,
+            code: 'CORS_NOT_ALLOWED',
+          }),
+          false,
+        )
       }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

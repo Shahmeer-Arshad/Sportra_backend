@@ -4,7 +4,6 @@ import { FastifyInstance } from 'fastify'
 
 describe('User Module (Functional)', () => {
   let app: FastifyInstance
-  let accessToken: string
 
   beforeAll(async () => {
     app = await buildApp()
@@ -12,6 +11,8 @@ describe('User Module (Functional)', () => {
   })
 
   afterAll(async () => {
+    // Remove the test user so repeated runs never collide on unique email/username/phone
+    await app.prisma.user.deleteMany({ where: { email: testUser.email } })
     await app.close()
   })
 
@@ -21,7 +22,7 @@ describe('User Module (Functional)', () => {
     firstName: 'John',
     lastName: 'Doe',
     password: 'SecurePassword123!',
-    phone: `12345678${Math.floor(Math.random() * 100)}`,
+    phone: `9${String(Date.now()).slice(-9)}${Math.floor(Math.random() * 10)}`,
   }
 
   it('should successfully sign up a new user', async () => {
@@ -66,8 +67,6 @@ describe('User Module (Functional)', () => {
     const refreshCookie = cookies.find((c) => c.name === 'refreshToken')
     expect(refreshCookie).toBeDefined()
     expect(refreshCookie?.httpOnly).toBe(true)
-
-    accessToken = body.accessToken
   })
 
   it('should fail login with incorrect password', async () => {
@@ -104,4 +103,3 @@ describe('User Module (Functional)', () => {
     expect(body.uptime).toBeGreaterThanOrEqual(0)
   })
 })
-

@@ -5,7 +5,6 @@ import { resolve } from 'path'
 // Load .env from project root (works in both dev and production)
 config({ path: resolve(process.cwd(), '.env') })
 
-
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3000),
@@ -17,6 +16,12 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
   // Comma-separated list of allowed CORS origins, e.g. "http://localhost:3000,https://myapp.com"
   ALLOWED_ORIGINS: z.string().optional(),
+  // Optional infrastructure. The API runs without them; /readyz reports what is configured.
+  REDIS_URL: z.string().optional(),
+  RABBITMQ_URL: z.string().optional(),
+  // Outbox relay worker
+  OUTBOX_POLL_MS: z.coerce.number().default(500),
+  OUTBOX_BATCH: z.coerce.number().default(100),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

@@ -80,7 +80,7 @@ export const createUserRepository = (prisma: PrismaClient) => ({
         lastName: data.lastName,
         phone: data.phone,
         profileUrl: data.profileUrl,
-        password: data.password, 
+        password: data.password,
         role: data.role,
       },
       select: {

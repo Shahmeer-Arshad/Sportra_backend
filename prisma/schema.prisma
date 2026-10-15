@@ -50,3 +50,45 @@ model RefreshToken {
 
   @@map("refresh_tokens")
 }
+
+// ─────────────────────────────────────────
+// Platform tables (Phase 0): outbox / inbox / audit
+// Partial indexes and the audit immutability trigger live in the migration SQL.
+// ─────────────────────────────────────────
+model Outbox {
+  id          String    @id @db.Uuid
+  eventType   String    @map("event_type")
+  routingKey  String    @map("routing_key")
+  payload     Json      @db.JsonB
+  headers     Json      @default("{}") @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
+  attempts    Int       @default(0)
+
+  @@map("outbox")
+}
+
+model Inbox {
+  eventId     String   @id @map("event_id") @db.Uuid
+  consumer    String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz
+
+  @@map("inbox")
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorType  String?  @map("actor_type")
+  venueId    String?  @map("venue_id") @db.Uuid
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  before     Json?    @db.JsonB
+  after      Json?    @db.JsonB
+  ip         String?
+  requestId  String?  @map("request_id")
+  at         DateTime @default(now()) @db.Timestamptz
+
+  @@map("audit_logs")
+}

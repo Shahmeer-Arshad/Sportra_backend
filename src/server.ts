@@ -16,7 +16,7 @@ async function main() {
 
     console.log(`
 ╔════════════════════════════════════════╗
-║          🚀 Node Starter API           ║
+║          🚀 Sportra API                 ║
 ╠════════════════════════════════════════╣
 ║  Environment : ${env.NODE_ENV.padEnd(22)}║
 ║  Port        : ${String(env.PORT).padEnd(22)}║

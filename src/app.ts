@@ -9,9 +9,12 @@ import jwtPlugin from './plugins/jwt'
 import corsPlugin from './plugins/cors'
 import securityPlugin from './plugins/security'
 import swaggerPlugin from './plugins/swagger'
+import redisPlugin from './plugins/redis'
+import { randomUUID } from 'crypto'
 
 // Routes
 import { userRoutes } from './modules/user/user.routes'
+import { healthRoutes } from './modules/health/health.routes'
 
 /**
  * Builds and configures the Fastify application.
@@ -19,6 +22,9 @@ import { userRoutes } from './modules/user/user.routes'
  */
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
+    // Reuse the caller's request id when present, so one request can be traced across services
+    genReqId: (req) => (req.headers['x-request-id'] as string) || randomUUID(),
+    requestIdHeader: 'x-request-id',
     logger: {
       level: env.NODE_ENV === 'production' ? 'info' : 'debug',
       redact: ['req.body.password', 'req.headers.authorization'],
@@ -50,19 +56,26 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(securityPlugin)
   await app.register(swaggerPlugin)
   await app.register(prismaPlugin)
+  await app.register(redisPlugin)
   await app.register(fastifyCookie)
   await app.register(jwtPlugin)
 
   // ─────────────────────────────────────────
   // Global error handler
   // ─────────────────────────────────────────
+  app.addHook('onSend', async (request, reply) => {
+    reply.header('x-request-id', request.id)
+  })
+
   app.setErrorHandler((error, _request, reply) => {
     // Known operational errors
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({
         statusCode: error.statusCode,
         error: error.name,
+        code: error.code,
         message: error.message,
+        ...(error.details !== undefined && { details: error.details }),
       })
     }
 
@@ -75,6 +88,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Validation Error',
+        code: 'VALIDATION_ERROR',
         message: 'Invalid request data',
         details: err.validation,
       })
@@ -85,6 +99,17 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply.status(401).send({
         statusCode: 401,
         error: 'Unauthorized',
+        code: 'UNAUTHORIZED',
+        message: err.message,
+      })
+    }
+
+    // Other 4xx errors raised by Fastify and plugins (rate limit 429, CORS, payload too large...)
+    if (typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 500) {
+      return reply.status(err.statusCode).send({
+        statusCode: err.statusCode,
+        error: err.error ?? err.name ?? 'Error',
+        code: err.statusCode === 429 ? 'RATE_LIMITED' : (err.code ?? 'BAD_REQUEST'),
         message: err.message,
       })
     }
@@ -94,6 +119,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     return reply.status(500).send({
       statusCode: 500,
       error: 'Internal Server Error',
+      code: 'INTERNAL_ERROR',
       message: env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
     })
   })
@@ -131,6 +157,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   )
 
   // API v1 routes
+  app.register(healthRoutes)
   app.register(userRoutes, { prefix: '/api/v1/users' })
 
   return app

@@ -8,7 +8,7 @@ const swaggerPlugin = fp(async (app: FastifyInstance) => {
     openapi: {
       openapi: '3.0.0',
       info: {
-        title: 'Node Starter API',
+        title: 'Sportra API',
         description: 'Fastify + TypeScript + Prisma API',
         version: '1.0.0',
       },
