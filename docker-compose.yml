@@ -1,10 +1,12 @@
+name: sportra-backend # own compose project: never collides with other local stacks
+
 services:
   # ─────────────────────────────────────────
   # PostgreSQL Database
   # ─────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: node_starter_postgres
+    container_name: sportra_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -15,7 +17,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - node_starter_net
+      - sportra_net
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-node_starter}']
       interval: 10s
@@ -29,7 +31,7 @@ services:
   # ─────────────────────────────────────────
   adminer:
     image: adminer:latest
-    container_name: node_starter_adminer
+    container_name: sportra_adminer
     restart: unless-stopped
     ports:
       - '${ADMINER_PORT:-8080}:8080'
@@ -40,7 +42,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - node_starter_net
+      - sportra_net
 
   # ─────────────────────────────────────────
   # App (uncomment to run fully containerized)
@@ -49,7 +51,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: Dockerfile
-  #   container_name: node_starter_app
+  #   container_name: sportra_app
   #   restart: unless-stopped
   #   ports:
   #     - '${PORT:-3000}:3000'
@@ -65,12 +67,12 @@ services:
   #     postgres:
   #       condition: service_healthy
   #   networks:
-  #     - node_starter_net
+  #     - sportra_net
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  node_starter_net:
+  sportra_net:
     driver: bridge
