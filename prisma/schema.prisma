@@ -11,44 +11,236 @@ datasource db {
 }
 
 // ─────────────────────────────────────────
-// Enums
-// ─────────────────────────────────────────
-enum Role {
-  USER
-  ADMIN
-}
-
-// ─────────────────────────────────────────
-// Models
+// Identity module (Phase 1)
+// Enums are text + CHECK constraints (see migration SQL). IDs are UUID v7 made by the app.
 // ─────────────────────────────────────────
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  username     String         @unique
-  firstName    String         @map("first_name")
-  middleName   String?        @map("middle_name")
-  lastName     String         @map("last_name")
-  phone        String?        @unique
-  profileUrl   String?        @map("profile_url")
-  password     String
-  role         Role           @default(USER)
+  id                       String    @id @db.Uuid
+  email                    String    @unique // always stored lower-case
+  emailVerifiedAt          DateTime? @map("email_verified_at") @db.Timestamptz
+  passwordHash             String?   @map("password_hash")
+  fullName                 String    @map("full_name")
+  phone                    String?   @unique
+  phoneVerifiedAt          DateTime? @map("phone_verified_at") @db.Timestamptz
+  whatsappOptIn            Boolean   @default(false) @map("whatsapp_opt_in")
+  whatsappOptInAt          DateTime? @map("whatsapp_opt_in_at") @db.Timestamptz
+  whatsappOptInSource      String?   @map("whatsapp_opt_in_source")
+  whatsappOptInTextVersion String?   @map("whatsapp_opt_in_text_version")
+  whatsappOptOutAt         DateTime? @map("whatsapp_opt_out_at") @db.Timestamptz
+  platformRole             String    @default("USER") @map("platform_role")
+  status                   String    @default("PENDING_VERIFICATION")
+  signupIntent             String    @default("PLAYER") @map("signup_intent")
+  noShowCount              Int       @default(0) @map("no_show_count")
+  failedLoginCount         Int       @default(0) @map("failed_login_count")
+  lockedUntil              DateTime? @map("locked_until") @db.Timestamptz
+  lastLoginAt              DateTime? @map("last_login_at") @db.Timestamptz
+  tokenValidAfter          DateTime  @default(now()) @map("token_valid_after") @db.Timestamptz
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships   VenueMembership[]
+  otpChallenges OtpChallenge[]
   refreshTokens RefreshToken[]
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  consents      WhatsappConsent[]
 
   @@map("users")
 }
 
-model RefreshToken {
-  id          String   @id @default(cuid())
-  jti         String   @unique
-  hashedToken String   @map("hashed_token")
-  userId      String   @map("user_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+model VenueMembership {
+  id        String   @id @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  venueId   String   @map("venue_id") @db.Uuid // plain id: the venue module owns venues
+  role      String // OWNER | MANAGER | FRONT_DESK | SCORER
+  isActive  Boolean  @default(true) @map("is_active")
+  invitedBy String?  @map("invited_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  @@unique([userId, venueId])
+  @@index([venueId])
+  @@map("venue_memberships")
+}
+
+model OtpChallenge {
+  id          String    @id @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  user        User?     @relation(fields: [userId], references: [id])
+  email       String
+  purpose     String // SIGNUP_VERIFY | LOGIN_STEP_UP | LOGIN_PASSWORDLESS | PASSWORD_RESET | EMAIL_CHANGE | STAFF_INVITE
+  codeHash    String    @map("code_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz
+  requestIp   String?   @map("request_ip")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([email, purpose, createdAt(sort: Desc)], map: "otp_lookup")
+  @@map("otp_challenges")
+}
+
+model RefreshToken {
+  id         String    @id @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id])
+  familyId   String    @map("family_id") @db.Uuid // rotation family: reuse of an old token revokes the family
+  tokenHash  String    @unique @map("token_hash")
+  userAgent  String?   @map("user_agent")
+  ip         String?
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId])
+  @@index([familyId])
   @@map("refresh_tokens")
+}
+
+model WhatsappConsent {
+  id                 String   @id @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  user               User     @relation(fields: [userId], references: [id])
+  phoneE164          String   @map("phone_e164")
+  action             String // OPT_IN | OPT_OUT
+  source             String
+  consentTextVersion String?  @map("consent_text_version")
+  ip                 String?
+  userAgent          String?  @map("user_agent")
+  occurredAt         DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@map("whatsapp_consents")
+}
+
+model StaffInvitation {
+  id         String    @id @db.Uuid
+  venueId    String    @map("venue_id") @db.Uuid
+  email      String
+  role       String // MANAGER | FRONT_DESK | SCORER
+  tokenHash  String    @unique @map("token_hash")
+  invitedBy  String    @map("invited_by") @db.Uuid
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("staff_invitations")
+}
+
+// ─────────────────────────────────────────
+// Venue module (Phase 1)
+// The geography column, GiST/trigram indexes and CHECKs live in the migration SQL.
+// ─────────────────────────────────────────
+model Area {
+  id      String   @id @db.Uuid
+  city    String
+  name    String
+  slug    String
+  aliases String[] @default([])
+  lat     Float?
+  lng     Float?
+  venues  Venue[]
+
+  @@unique([city, slug])
+  @@map("areas")
+}
+
+model Venue {
+  id                      String    @id @db.Uuid
+  ownerUserId             String    @map("owner_user_id") @db.Uuid
+  name                    String
+  slug                    String    @unique
+  city                    String
+  areaId                  String?   @map("area_id") @db.Uuid
+  area                    Area?     @relation(fields: [areaId], references: [id])
+  address                 String
+  lat                     Float
+  lng                     Float
+  // Generated from lat/lng in the migration. Never written by the app; read with raw SQL.
+  location                Unsupported("geography(Point,4326)")?
+  amenities               String[]  @default([])
+  whatsappNumber          String?   @map("whatsapp_number")
+  contactPhone            String?   @map("contact_phone")
+  contactEmail            String?   @map("contact_email")
+  timezone                String    @default("Asia/Karachi")
+  operatingHours          Json      @map("operating_hours") @db.JsonB
+  cancellationCutoffHours Int       @default(12) @map("cancellation_cutoff_hours")
+  commissionBps           Int       @default(0) @map("commission_bps")
+  verificationStatus      String    @default("DRAFT") @map("verification_status")
+  isActive                Boolean   @default(true) @map("is_active")
+  photos                  String[]  @default([])
+  onboardingStep          Int       @default(1) @map("onboarding_step")
+  submittedAt             DateTime? @map("submitted_at") @db.Timestamptz
+  verifiedAt              DateTime? @map("verified_at") @db.Timestamptz
+  verifiedBy              String?   @map("verified_by") @db.Uuid
+  version                 Int       @default(1)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  courts  Court[]
+  reviews VenueReview[]
+
+  @@index([city, areaId])
+  @@index([location], type: Gist, map: "venues_location_gix")
+  @@index([amenities], type: Gin, map: "venues_amenities_gin")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "venues_name_trgm")
+  @@map("venues")
+}
+
+model Court {
+  id            String        @id @db.Uuid
+  venueId       String        @map("venue_id") @db.Uuid
+  venue         Venue         @relation(fields: [venueId], references: [id])
+  name          String
+  sport         String
+  surface       String
+  capacity      Int?
+  slotMinutes   Int           @default(60) @map("slot_minutes")
+  hoursOverride Json?         @map("hours_override") @db.JsonB
+  isActive      Boolean       @default(true) @map("is_active")
+  version       Int           @default(1)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  pricingRules  PricingRule[]
+
+  @@index([venueId])
+  @@index([sport, surface])
+  @@map("courts")
+}
+
+model PricingRule {
+  id         String   @id @db.Uuid
+  courtId    String   @map("court_id") @db.Uuid
+  court      Court    @relation(fields: [courtId], references: [id])
+  name       String
+  dayType    String   @map("day_type") // ANY | WEEKDAY | WEEKEND | DATE_RANGE
+  startDate  String?  @map("start_date") // yyyy-mm-dd, for DATE_RANGE
+  endDate    String?  @map("end_date")
+  fromTime   String   @map("from_time") // HH:mm
+  toTime     String   @map("to_time") // HH:mm, may be earlier than from_time (overnight)
+  priceMinor BigInt   @map("price_minor")
+  priority   Int      @default(0)
+  tag        String // PEAK | OFF_PEAK
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([courtId, priority(sort: Desc)])
+  @@map("pricing_rules")
+}
+
+model VenueReview {
+  id           String   @id @db.Uuid
+  venueId      String   @map("venue_id") @db.Uuid
+  venue        Venue    @relation(fields: [venueId], references: [id])
+  submissionNo Int      @map("submission_no")
+  reviewerId   String   @map("reviewer_id") @db.Uuid
+  decision     String // APPROVED | CHANGES_REQUESTED | REJECTED | SUSPENDED | REINSTATED
+  comments     String?
+  fieldFlags   Json     @default("[]") @map("field_flags") @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([venueId, createdAt(sort: Desc)])
+  @@map("venue_reviews")
 }
 
 // ─────────────────────────────────────────
@@ -77,18 +269,18 @@ model Inbox {
 }
 
 model AuditLog {
-  id         BigInt   @id @default(autoincrement())
-  actorId    String?  @map("actor_id") @db.Uuid
-  actorType  String?  @map("actor_type")
-  venueId    String?  @map("venue_id") @db.Uuid
-  action     String
-  entity     String
-  entityId   String?  @map("entity_id")
-  before     Json?    @db.JsonB
-  after      Json?    @db.JsonB
-  ip         String?
-  requestId  String?  @map("request_id")
-  at         DateTime @default(now()) @db.Timestamptz
+  id        BigInt   @id @default(autoincrement())
+  actorId   String?  @map("actor_id") @db.Uuid
+  actorType String?  @map("actor_type")
+  venueId   String?  @map("venue_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  before    Json?    @db.JsonB
+  after     Json?    @db.JsonB
+  ip        String?
+  requestId String?  @map("request_id")
+  at        DateTime @default(now()) @db.Timestamptz
 
   @@map("audit_logs")
 }

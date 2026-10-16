@@ -94,7 +94,7 @@ describe('platform behaviour (error handler, security, docs)', () => {
   it('never returns password hashes or tokens in the login error body', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/api/v1/users/login',
+      url: '/api/v1/public/auth/login',
       payload: { email: 'nobody@example.com', password: 'WrongPassword1!' },
     })
     expect(res.statusCode).toBe(401)

@@ -22,7 +22,7 @@ export function localParts(instant: Date, tz = DEFAULT_TZ) {
   }
 }
 
-function prevDay(date: string): string {
+export function prevDay(date: string): string {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - 1)
   return d.toISOString().slice(0, 10)

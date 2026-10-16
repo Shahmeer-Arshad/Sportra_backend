@@ -10,10 +10,12 @@ import corsPlugin from './plugins/cors'
 import securityPlugin from './plugins/security'
 import swaggerPlugin from './plugins/swagger'
 import redisPlugin from './plugins/redis'
+import mailerPlugin from './plugins/mailer'
 import { randomUUID } from 'crypto'
 
 // Routes
-import { userRoutes } from './modules/user/user.routes'
+import { identityRoutes } from './modules/identity/identity.routes'
+import { venueRoutes } from './modules/venue/venue.routes'
 import { healthRoutes } from './modules/health/health.routes'
 
 /**
@@ -43,7 +45,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     ajv: {
       customOptions: {
         removeAdditional: 'all',
-        coerceTypes: true,
+        coerceTypes: 'array',
         allErrors: true,
       },
     },
@@ -57,6 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(swaggerPlugin)
   await app.register(prismaPlugin)
   await app.register(redisPlugin)
+  await app.register(mailerPlugin)
   await app.register(fastifyCookie)
   await app.register(jwtPlugin)
 
@@ -158,7 +161,8 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // API v1 routes
   app.register(healthRoutes)
-  app.register(userRoutes, { prefix: '/api/v1/users' })
+  app.register(identityRoutes)
+  app.register(venueRoutes)
 
   return app
 }

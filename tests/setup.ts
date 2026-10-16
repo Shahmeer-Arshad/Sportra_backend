@@ -18,3 +18,4 @@ if (process.env.TEST_DATABASE_URL) {
 process.env.ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN ?? '15m'
 process.env.REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN ?? '7d'
 process.env.NODE_ENV = 'test'
+process.env.BCRYPT_COST = '4'

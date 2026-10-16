@@ -1,14 +1,16 @@
-import { Role, PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import '@fastify/cookie'
 import type { Redis } from 'ioredis'
 
 // ─────────────────────────────────────────
 // JWT Payload
 // ─────────────────────────────────────────
+export type PlatformRole = 'USER' | 'PLATFORM_ADMIN'
+
 export interface JwtPayload {
-  sub: string // user id
+  sub: string // user id (UUID v7)
   email: string
-  role: Role
+  role: PlatformRole
   iat?: number
   exp?: number
 }
@@ -20,14 +22,6 @@ declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
     redis: Redis | null
-  }
-  interface FastifyRequest {
-    accessJwtVerify: <T>(options?: any) => Promise<T>
-    refreshJwtVerify: <T>(options?: any) => Promise<T>
-  }
-  interface FastifyReply {
-    accessJwtSign: (payload: any, options?: any) => Promise<string>
-    refreshJwtSign: (payload: any, options?: any) => Promise<string>
   }
 }
 

@@ -13,12 +13,21 @@ const envSchema = z.object({
   ACCESS_TOKEN_SECRET: z.string().min(16, 'ACCESS_TOKEN_SECRET must be at least 16 characters'),
   REFRESH_TOKEN_SECRET: z.string().min(16, 'REFRESH_TOKEN_SECRET must be at least 16 characters'),
   ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),
-  REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
+  REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'), // legacy, unused: refresh tokens last REFRESH_TOKEN_DAYS
   // Comma-separated list of allowed CORS origins, e.g. "http://localhost:3000,https://myapp.com"
   ALLOWED_ORIGINS: z.string().optional(),
   // Optional infrastructure. The API runs without them; /readyz reports what is configured.
   REDIS_URL: z.string().optional(),
   RABBITMQ_URL: z.string().optional(),
+  // Identity
+  // bcrypt work factor (12 in production; tests use a low value to stay fast)
+  BCRYPT_COST: z.coerce.number().int().min(4).max(15).default(12),
+  REFRESH_TOKEN_DAYS: z.coerce.number().default(30),
+  OTP_HMAC_SECRET: z.string().min(16, 'OTP_HMAC_SECRET must be at least 16 characters'),
+  // Email (MailHog in dev). In tests mail is captured in memory.
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().default(51025),
+  MAIL_FROM: z.string().default('Sportra <no-reply@sportra.local>'),
   // Outbox relay worker
   OUTBOX_POLL_MS: z.coerce.number().default(500),
   OUTBOX_BATCH: z.coerce.number().default(100),

@@ -37,7 +37,7 @@ describe('health and request ids', () => {
   })
 
   it('errors carry a code', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/v1/users/login', payload: {} })
+    const res = await app.inject({ method: 'POST', url: '/api/v1/public/auth/login', payload: {} })
     expect(res.statusCode).toBe(400)
     expect(res.json().code).toBe('VALIDATION_ERROR')
   })
