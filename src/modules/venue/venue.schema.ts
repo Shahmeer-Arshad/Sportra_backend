@@ -68,7 +68,6 @@ export const pricingRuleBody = {
   required: ['courtId', 'name', 'dayType', 'fromTime', 'toTime', 'priceMinor', 'tag'],
   properties: ruleProps,
 }
-export const pricingRulePatchBody = { type: 'object', properties: { ...ruleProps } }
 
 export const reviewBody = {
   type: 'object',
@@ -123,5 +122,33 @@ export const searchQuery = {
     sort: { type: 'string', enum: ['distance', 'price', 'name'], default: 'distance' },
     limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
     cursor: { type: 'string', maxLength: 40 },
+  },
+}
+
+// ───────── query and patch schemas used by the routes ─────────
+export const adminListQuery = {
+  type: 'object',
+  properties: {
+    status: { type: 'string' },
+    city: { type: 'string' },
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+  },
+}
+export const areaPatchBody = { type: 'object', properties: areaBody.properties }
+export const areasQuery = {
+  type: 'object',
+  properties: { city: { type: 'string', maxLength: 60 } },
+}
+export const pricingRulesQuery = {
+  type: 'object',
+  properties: { courtId: { type: 'string', format: 'uuid' } },
+}
+export const pricingPreviewQuery = {
+  type: 'object',
+  required: ['courtId', 'date'],
+  properties: {
+    courtId: { type: 'string', format: 'uuid' },
+    date: { type: 'string', format: 'date' },
   },
 }

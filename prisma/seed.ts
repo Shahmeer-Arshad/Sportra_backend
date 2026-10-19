@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { uuidv7 } from '../src/lib/id'
 import { createHotLane } from '../src/lib/hotlane'
-import { createSlotService } from '../src/modules/booking/booking.slots'
+import { createBookingModule } from '../src/modules/booking/booking.module'
 
 /**
  * Dev seed (safe to run again): an admin, areas for Karachi and Lahore, one demo owner and 20
@@ -168,7 +168,7 @@ async function main() {
   }
   console.log(`✅ ${created} demo venues created (${20 - created} already existed)`)
   // Phase 2: slots for every verified venue (what the nightly worker job does)
-  const gen = await createSlotService(prisma, createHotLane(null)).generateAll()
+  const gen = await createBookingModule(prisma, createHotLane(null)).slots.generateAll()
   console.log(`✅ Slots ready for ${gen.venues} verified venues (${gen.inserted} new hours)`)
   console.log('✅ Seed completed. Demo owner: demo.owner@sportra.local / Owner@12345')
 }

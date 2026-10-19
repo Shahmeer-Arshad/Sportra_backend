@@ -28,14 +28,15 @@ node-starter/
 ├── src/
 │   ├── config/
 │   │   └── env.ts                  # Env validation (Zod) — fails fast on bad config
-│   ├── modules/
-│   │   └── user/
-│   │       ├── user.controller.ts  # Route handlers (thin layer)
-│   │       ├── user.mediator.ts    # Command dispatcher
-│   │       ├── user.repository.ts  # Prisma DB operations
-│   │       ├── user.routes.ts      # Fastify route registration
-│   │       ├── user.schema.ts      # Zod + JSON Schema validations
-│   │       └── user.service.ts     # Business logic
+│   ├── modules/                    # one folder per feature: identity, venue, booking, health
+│   │   └── <feature>/
+│   │       ├── <feature>.routes.ts      # Endpoints + schema, routes to the controller
+│   │       ├── <feature>.controller.ts  # HTTP only: params in, response out
+│   │       ├── <feature>.service.ts     # Business rules, reads
+│   │       ├── <feature>.repository.ts  # ALL database queries (Prisma + raw SQL)
+│   │       ├── <feature>.schema.ts      # JSON Schema / Zod validation
+│   │       ├── <feature>.domain.ts      # Pure rules (optional)
+│   │       └── mediators/               # One file per multi-step use-case (transaction + audit + events)
 │   ├── plugins/
 │   │   ├── cors.ts                 # CORS with origin whitelist
 │   │   ├── jwt.ts                  # Dual JWT (access + refresh namespaces)
@@ -213,13 +214,15 @@ cp .env.example .env
 
 ## Adding a New Module
 
+Layers, one file each. Keep every file small. Details: `../CLAUDE.md`, "Module layout".
+
 1. Create `src/modules/<feature>/`
-2. Add `<feature>.schema.ts` — Zod + JSON Schema
-3. Add `<feature>.repository.ts` — Prisma queries
-4. Add `<feature>.service.ts` — Business logic
-5. Add `<feature>.mediator.ts` — Command dispatcher
-6. Add `<feature>.controller.ts` — Request/reply handling
-7. Add `<feature>.routes.ts` — Register with Fastify
+2. `<feature>.schema.ts`: JSON Schema (and Zod types) for body, query, params
+3. `<feature>.repository.ts`: all queries in a `queries(db)` function, wrapped with `makeRepository(prisma, queries)` (`src/lib/repository.ts`) so `repo.transaction(fn)` gives the same queries bound to a transaction
+4. `<feature>.service.ts`: business rules and reads, built from the repository
+5. `mediators/<use-case>.mediator.ts`: only for multi-step work (several writes in one transaction, audit, outbox events)
+6. `<feature>.controller.ts`: reads the request, calls the service or a mediator, sends the response. No rules, no SQL
+7. `<feature>.routes.ts`: endpoints, hooks and schemas, pointing at controller handlers
 8. Register routes in `src/app.ts`
 
 ---

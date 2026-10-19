@@ -730,7 +730,7 @@ describe('outage / rain lock', () => {
         createdBy: fx.manager.id,
       },
     })
-    await Promise.all([app.booking.pos.processOutage(lock2), app.booking.pos.processOutage(lock2)])
+    await Promise.all([app.booking.outage.process(lock2), app.booking.outage.process(lock2)])
     const evs = await app.prisma.$queryRaw<
       { n: number }[]
     >`SELECT count(*)::int AS n FROM outbox WHERE event_type = 'BookingItemCancelled' AND payload->'data'->>'bookingId' = ${h2.id}`

@@ -13,7 +13,6 @@
  * by every read and every acquire (lazy reclaim). All SQL here is raw on purpose, so locking is explicit.
  */
 import { Prisma, PrismaClient } from '@prisma/client'
-import { HotLane } from '../../lib/hotlane'
 import { isLockContention, isTxTimeout } from '../../lib/pgerror'
 import { ConflictError, NotFoundError } from '../../utils/errors'
 import { SlotStatus, canTransition } from './booking.domain'
@@ -389,25 +388,4 @@ export async function releaseBlocks(
      WHERE id = ANY(${ids}::uuid[]) AND status = 'BLOCKED'
     RETURNING ${SLOT_COLS}`
   return rows.map(toUpdate)
-}
-
-/** Tell connected clients, AFTER the transaction committed. Best effort: never throws. */
-export function publishSlotUpdates(lane: HotLane, updates: SlotUpdate[], committedAt = new Date()) {
-  for (const u of updates) {
-    lane.publish({ type: 'slot.updated', ...u, committedAt: committedAt.toISOString() })
-  }
-}
-
-export function publishBookingUpdate(
-  lane: HotLane,
-  b: {
-    bookingId: string
-    ref: string
-    venueId: string
-    userId: string | null
-    status: string
-    version?: number
-  },
-) {
-  lane.publish({ type: 'booking.updated', ...b })
 }

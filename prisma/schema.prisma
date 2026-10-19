@@ -502,3 +502,282 @@ model OutageLock {
   @@index([venueId, createdAt(sort: Desc)], map: "outage_locks_venue")
   @@map("outage_locks")
 }
+
+// ─────────────────────────────────────────
+// Payment + ledger modules (Phase 3)
+// Constraints, the append-only trigger and apply_refund_result() live in the migration SQL.
+// ─────────────────────────────────────────
+model Payment {
+  id                   String    @id @db.Uuid
+  referenceType        String    @map("reference_type")
+  referenceId          String    @map("reference_id") @db.Uuid
+  payerUserId          String    @map("payer_user_id") @db.Uuid
+  venueId              String    @map("venue_id") @db.Uuid
+  purpose              String
+  mode                 String?
+  method               String
+  gateway              String
+  amountMinor          BigInt    @map("amount_minor")
+  currency             String    @default("PKR") @db.Char(3)
+  status               String
+  gatewayRef           String?   @map("gateway_ref")
+  gatewaySessionId     String?   @map("gateway_session_id")
+  redirectUrl          String?   @map("redirect_url")
+  idempotencyKey       String?   @unique @map("idempotency_key")
+  expiresAt            DateTime? @map("expires_at") @db.Timestamptz
+  paidAt               DateTime? @map("paid_at") @db.Timestamptz
+  failureReason        String?   @map("failure_reason")
+  refundRequiredReason String?   @map("refund_required_reason")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  refunds Refund[]
+
+  @@unique([gateway, gatewayRef], map: "payments_gateway_ref_key")
+  @@index([referenceType, referenceId], map: "payments_ref")
+  @@index([payerUserId, createdAt(sort: Desc)], map: "payments_payer")
+  @@index([venueId, createdAt(sort: Desc)], map: "payments_venue")
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id               BigInt    @id @default(autoincrement())
+  gateway          String
+  gatewayEventId   String    @map("gateway_event_id")
+  eventType        String    @map("event_type")
+  paymentId        String?   @map("payment_id") @db.Uuid
+  referenceType    String?   @map("reference_type")
+  referenceId      String?   @map("reference_id") @db.Uuid
+  amountMinor      BigInt?   @map("amount_minor")
+  currency         String?   @db.Char(3)
+  gatewayPaidAt    DateTime? @map("gateway_paid_at") @db.Timestamptz
+  raw              Json      @db.JsonB
+  processingStatus String    @default("RECEIVED") @map("processing_status")
+  outcome          String?
+  outcomeDetail    Json?     @map("outcome_detail") @db.JsonB
+  receivedAt       DateTime  @default(now()) @map("received_at") @db.Timestamptz
+  processedAt      DateTime? @map("processed_at") @db.Timestamptz
+
+  @@unique([gateway, gatewayEventId], map: "payment_events_gateway_event_uniq")
+  @@index([paymentId, eventType], map: "payment_events_payment")
+  @@map("payment_events")
+}
+
+model WebhookRejection {
+  id         BigInt   @id @default(autoincrement())
+  gateway    String
+  reason     String
+  headers    Json     @db.JsonB
+  bodySha256 String   @map("body_sha256")
+  sourceIp   String?  @map("source_ip")
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz
+
+  @@map("webhook_rejections")
+}
+
+model Refund {
+  id                  String    @id @db.Uuid
+  paymentId           String    @map("payment_id") @db.Uuid
+  payment             Payment   @relation(fields: [paymentId], references: [id])
+  amountMinor         BigInt    @map("amount_minor")
+  reason              String
+  reasonCode          String?   @map("reason_code")
+  kind                String
+  status              String
+  gatewayRefundRef    String?   @map("gateway_refund_ref")
+  initiatedBy         String    @map("initiated_by")
+  requestedBy         String?   @map("requested_by") @db.Uuid
+  approvedBy          String?   @map("approved_by") @db.Uuid
+  attempts            Int       @default(0)
+  nextAttemptAt       DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz
+  processingStartedAt DateTime? @map("processing_started_at") @db.Timestamptz
+  lastError           String?   @map("last_error")
+  idempotencyKey      String?   @unique @map("idempotency_key")
+  cancellationId      String?   @map("cancellation_id") @db.Uuid
+  sourceEventId       String?   @map("source_event_id") @db.Uuid
+  bookingId           String?   @map("booking_id") @db.Uuid
+  disputeId           String?   @map("dispute_id") @db.Uuid
+  venueImpact         Boolean   @default(true) @map("venue_impact")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@index([paymentId], map: "refunds_payment")
+  @@map("refunds")
+}
+
+model BookingPayment {
+  paymentId      String    @id @map("payment_id") @db.Uuid
+  bookingId      String    @map("booking_id") @db.Uuid
+  paymentEventId BigInt?   @map("payment_event_id")
+  amountMinor    BigInt    @map("amount_minor")
+  paidAt         DateTime? @map("paid_at") @db.Timestamptz
+  resolution     String
+  reasonCode     String?   @map("reason_code")
+  resolvedAt     DateTime  @default(now()) @map("resolved_at") @db.Timestamptz
+
+  @@index([bookingId], map: "booking_payments_booking")
+  @@map("booking_payments")
+}
+
+model Dispute {
+  id                    String    @id @db.Uuid
+  bookingId             String    @map("booking_id") @db.Uuid
+  venueId               String    @map("venue_id") @db.Uuid
+  openedBy              String    @map("opened_by") @db.Uuid
+  openerRole            String    @map("opener_role")
+  category              String
+  description           String
+  status                String    @default("OPEN")
+  resolution            String?
+  resolutionAmountMinor BigInt?   @map("resolution_amount_minor")
+  proposal              Json?     @db.JsonB
+  proposedBy            String?   @map("proposed_by") @db.Uuid
+  resolvedBy            String?   @map("resolved_by") @db.Uuid
+  resolvedNote          String?   @map("resolved_note")
+  resolvedAt            DateTime? @map("resolved_at") @db.Timestamptz
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, createdAt], map: "disputes_status")
+  @@map("disputes")
+}
+
+model LedgerEntry {
+  id              BigInt   @id @default(autoincrement())
+  eventId         String   @map("event_id") @db.Uuid
+  venueId         String   @map("venue_id") @db.Uuid
+  businessDate    DateTime @map("business_date") @db.Date
+  entryType       String   @map("entry_type")
+  direction       String
+  amountMinor     BigInt   @map("amount_minor")
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id") @db.Uuid
+  paymentId       String?  @map("payment_id") @db.Uuid
+  reversesEntryId BigInt?  @map("reverses_entry_id")
+  recordedBy      String   @map("recorded_by")
+  note            String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([eventId, entryType, direction], map: "ledger_entries_event_type_uniq")
+  @@index([venueId, businessDate, entryType], map: "ledger_venue_day")
+  @@index([venueId, id], map: "ledger_venue_id")
+  @@map("ledger_entries")
+}
+
+model DailyClosing {
+  id               String    @id @db.Uuid
+  venueId          String    @map("venue_id") @db.Uuid
+  businessDate     DateTime  @map("business_date") @db.Date
+  expected         Json      @db.JsonB
+  countedCashMinor BigInt    @map("counted_cash_minor")
+  varianceMinor    BigInt    @map("variance_minor")
+  notes            String?
+  status           String
+  closedBy         String    @map("closed_by") @db.Uuid
+  closedAt         DateTime  @map("closed_at") @db.Timestamptz
+  reopenedBy       String?   @map("reopened_by") @db.Uuid
+  reopenedAt       DateTime? @map("reopened_at") @db.Timestamptz
+  reopenReason     String?   @map("reopen_reason")
+  ledgerWatermark  DateTime  @map("ledger_watermark") @db.Timestamptz
+  warnings         Json      @default("[]") @db.JsonB
+
+  @@unique([venueId, businessDate], map: "daily_closings_venue_date_key")
+  @@map("daily_closings")
+}
+
+model Payout {
+  id                String       @id @db.Uuid
+  venueId           String       @map("venue_id") @db.Uuid
+  periodFrom        DateTime     @map("period_from") @db.Date
+  periodTo          DateTime     @map("period_to") @db.Date
+  grossOnlineMinor  BigInt       @map("gross_online_minor")
+  commissionMinor   BigInt       @map("commission_minor")
+  refundsMinor      BigInt       @map("refunds_minor")
+  adjustmentsMinor  BigInt       @map("adjustments_minor")
+  carryForwardMinor BigInt       @default(0) @map("carry_forward_minor")
+  netMinor          BigInt       @map("net_minor")
+  currency          String       @default("PKR") @db.Char(3)
+  status            String
+  ledgerFromId      BigInt       @default(0) @map("ledger_from_id")
+  ledgerToId        BigInt       @default(0) @map("ledger_to_id")
+  approvedBy        String?      @map("approved_by") @db.Uuid
+  approvedAt        DateTime?    @map("approved_at") @db.Timestamptz
+  paidAt            DateTime?    @map("paid_at") @db.Timestamptz
+  bankRef           String?      @map("bank_ref")
+  statementUrl      String?      @map("statement_url")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  lines             PayoutLine[]
+
+  @@unique([venueId, ledgerToId], map: "payouts_no_overlap")
+  @@index([status, createdAt], map: "payouts_status")
+  @@map("payouts")
+}
+
+model PayoutLine {
+  id              BigInt @id @default(autoincrement())
+  payoutId        String @map("payout_id") @db.Uuid
+  payout          Payout @relation(fields: [payoutId], references: [id])
+  referenceType   String @map("reference_type")
+  referenceId     String @map("reference_id") @db.Uuid
+  grossMinor      BigInt @map("gross_minor")
+  commissionMinor BigInt @map("commission_minor")
+  refundsMinor    BigInt @map("refunds_minor")
+
+  @@index([payoutId], map: "payout_lines_payout")
+  @@map("payout_lines")
+}
+
+model ReconciliationRun {
+  id           String               @id @db.Uuid
+  gateway      String
+  businessDate DateTime             @map("business_date") @db.Date
+  status       String
+  matched      Int                  @default(0)
+  mismatched   Int                  @default(0)
+  reportSha256 String?              @map("report_sha256")
+  startedAt    DateTime             @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt   DateTime?            @map("finished_at") @db.Timestamptz
+  items        ReconciliationItem[]
+
+  @@unique([gateway, businessDate], map: "reconciliation_runs_gateway_date_key")
+  @@map("reconciliation_runs")
+}
+
+model ReconciliationItem {
+  id                 BigInt            @id @default(autoincrement())
+  runId              String            @map("run_id") @db.Uuid
+  run                ReconciliationRun @relation(fields: [runId], references: [id])
+  gatewayRef         String?           @map("gateway_ref")
+  paymentId          String?           @map("payment_id") @db.Uuid
+  diffType           String            @map("diff_type")
+  ourAmountMinor     BigInt?           @map("our_amount_minor")
+  gatewayAmountMinor BigInt?           @map("gateway_amount_minor")
+  gatewayFeeMinor    BigInt?           @map("gateway_fee_minor")
+  resolution         String?
+  resolvedBy         String?           @map("resolved_by") @db.Uuid
+  note               String?
+
+  @@map("reconciliation_items")
+}
+
+model MockGatewayTxn {
+  sessionId     String    @id @map("session_id")
+  amountMinor   BigInt    @map("amount_minor")
+  currency      String    @default("PKR") @db.Char(3)
+  status        String
+  paidAt        DateTime? @map("paid_at") @db.Timestamptz
+  feeMinor      BigInt    @default(0) @map("fee_minor")
+  refundedMinor BigInt    @default(0) @map("refunded_minor")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("mock_gateway_txns")
+}
+
+model MockGatewayRefund {
+  idempotencyKey String   @id @map("idempotency_key")
+  refundRef      String   @map("refund_ref")
+  sessionId      String   @map("session_id")
+  amountMinor    BigInt   @map("amount_minor")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("mock_gateway_refunds")
+}

@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { HotLane } from '../../lib/hotlane'
-import { createPosService } from './booking.pos'
-import { createSlotService } from './booking.slots'
+import { createBookingModule } from './booking.module'
 
 /**
  * Background jobs, run by the worker process (or called directly in tests). None of them is needed
@@ -12,23 +11,19 @@ export function createBookingJobs(
   hotLane: HotLane,
   log?: { warn: (o: object, m: string) => void },
 ) {
-  const slots = createSlotService(prisma, hotLane)
-  const pos = createPosService(prisma, hotLane)
+  const { slots, outage, stuckOutageIds } = createBookingModule(prisma, hotLane)
 
   return {
     /** Every minute: free expired holds, expire stale pending bookings, finish played bookings, resume outage jobs. */
     async tick() {
       const swept = await slots.sweep()
       // an outage job whose API process died while handling players is picked up again (idempotent)
-      const stuck = await prisma.outageLock.findMany({
-        where: { status: 'PROCESSING', createdAt: { lt: new Date(Date.now() - 30_000) } },
-        select: { id: true },
-      })
-      for (const l of stuck) {
+      const stuck = await stuckOutageIds(new Date(Date.now() - 30_000))
+      for (const id of stuck) {
         try {
-          await pos.processOutage(l.id)
+          await outage.process(id)
         } catch (err) {
-          log?.warn({ err, lockId: l.id }, 'Outage job could not be resumed')
+          log?.warn({ err, lockId: id }, 'Outage job could not be resumed')
         }
       }
       return { ...swept, resumedOutages: stuck.length }

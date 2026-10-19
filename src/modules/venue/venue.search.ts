@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import { Db } from '../../lib/outbox'
 
 export interface SearchParams {
   lat?: number
@@ -31,7 +32,7 @@ function decodeCursor(c?: string): number {
  * (Prisma.sql), never concatenated. With lat/lng it filters by radius using the PostGIS GiST
  * index (ST_DWithin) and sorts by distance; without them it works in "area mode".
  */
-export async function searchVenues(prisma: PrismaClient, p: SearchParams) {
+export async function searchVenues(prisma: Db, p: SearchParams) {
   const limit = Math.min(p.limit ?? 20, 50)
   const offset = decodeCursor(p.cursor)
   const geo = p.lat !== undefined && p.lng !== undefined

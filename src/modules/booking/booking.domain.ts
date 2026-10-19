@@ -280,3 +280,8 @@ export function normalizePhone(p: string): string {
   if (digits.startsWith('0')) return `+92${digits.slice(1)}`
   return `+${digits}`
 }
+
+// ───────────── abuse thresholds ─────────────
+/** Users with this many strikes (or more) show up in the admin abuse list. */
+export const ABUSE_NO_SHOWS = 3
+export const ABUSE_ABANDONED_HOLDS = 5

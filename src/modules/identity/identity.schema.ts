@@ -87,3 +87,22 @@ export const pageQuery = {
     offset: { type: 'integer', minimum: 0, default: 0 },
   },
 }
+
+export const adminUsersQuery = {
+  type: 'object',
+  properties: {
+    q: { type: 'string', maxLength: 100 },
+    status: { type: 'string' },
+    ...pageQuery.properties,
+  },
+}
+export const auditLogsQuery = {
+  type: 'object',
+  properties: {
+    actorId: { type: 'string' },
+    entity: { type: 'string' },
+    entityId: { type: 'string' },
+    action: { type: 'string' },
+    ...pageQuery.properties,
+  },
+}

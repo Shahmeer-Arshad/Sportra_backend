@@ -8,8 +8,9 @@
  *   venue:{venueId}               anyone viewing the venue: "refetch the grid" hints
  *   user:{userId}                 the user's own booking changes
  */
-import { HotMessage } from '../../lib/hotlane'
+import { HotLane, HotMessage } from '../../lib/hotlane'
 import { SlotStatus, publicStatus } from './booking.domain'
+import type { SlotUpdate } from './booking.inventory'
 
 export interface RoutedEvent {
   room: string
@@ -136,4 +137,25 @@ export function classifyRoom(room: string): RoomKind {
   const user = room.match(new RegExp(`^user:(${UUID})$`, 'i'))
   if (user) return { kind: 'user', userId: user[1].toLowerCase() }
   return { kind: 'invalid' }
+}
+
+/** Tell connected clients, AFTER the transaction committed. Best effort: never throws. */
+export function publishSlotUpdates(lane: HotLane, updates: SlotUpdate[], committedAt = new Date()) {
+  for (const u of updates) {
+    lane.publish({ type: 'slot.updated', ...u, committedAt: committedAt.toISOString() })
+  }
+}
+
+export function publishBookingUpdate(
+  lane: HotLane,
+  b: {
+    bookingId: string
+    ref: string
+    venueId: string
+    userId: string | null
+    status: string
+    version?: number
+  },
+) {
+  lane.publish({ type: 'booking.updated', ...b })
 }

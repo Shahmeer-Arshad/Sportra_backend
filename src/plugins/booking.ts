@@ -1,29 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
-import {
-  createAdminBookingService,
-  AdminBookingService,
-  RealtimeStats,
-} from '../modules/booking/booking.admin'
-import {
-  createAvailabilityService,
-  AvailabilityService,
-} from '../modules/booking/booking.availability'
-import { createPosService, PosService } from '../modules/booking/booking.pos'
-import { createBookingService, BookingService } from '../modules/booking/booking.service'
-import { createSlotService, SlotService } from '../modules/booking/booking.slots'
+import { BookingModule, createBookingModule } from '../modules/booking/booking.module'
 
-export interface BookingServices {
-  slots: SlotService
-  bookings: BookingService
-  pos: PosService
-  availability: AvailabilityService
-  admin: AdminBookingService
-  /** Waits for slot syncs and outage jobs started in the background (tests, graceful shutdown). */
-  idle(): Promise<void>
-  /** Set by the realtime plugin so the admin health tile can report socket numbers. */
-  realtimeStats: () => RealtimeStats
-}
+/** The booking module plus `idle()`: waits for slot syncs and outage jobs started in the background (tests, shutdown). */
+export type BookingServices = BookingModule & { idle(): Promise<void> }
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -41,12 +21,8 @@ const CATALOG_URL =
  * background (idempotent). The nightly job in the worker covers anything missed.
  */
 const bookingPlugin = fp(async (app: FastifyInstance) => {
-  const slots = createSlotService(app.prisma, app.hotLane, app.log)
-  const bookings = createBookingService(app.prisma, app.hotLane, slots)
-  const pos = createPosService(app.prisma, app.hotLane)
-  const availability = createAvailabilityService(app.prisma)
-  let stats: () => RealtimeStats = () => ({ connections: 0, emitted: 0, p95LatencyMs: null })
-  const admin = createAdminBookingService(app.prisma, app.hotLane, () => stats())
+  const booking = createBookingModule(app.prisma, app.hotLane, { log: app.log })
+  const slots = booking.slots
 
   const pending = new Set<Promise<void>>()
   const state = new Map<string, { running: boolean; dirty: boolean }>()
@@ -88,30 +64,19 @@ const bookingPlugin = fp(async (app: FastifyInstance) => {
     return payload
   })
 
-  const services: BookingServices = {
-    slots,
-    bookings,
-    pos,
-    availability,
-    admin,
+  const services: BookingServices = Object.assign(booking, {
     async idle() {
       for (;;) {
         await Promise.allSettled([...pending])
-        await pos.idle()
+        await booking.outage.idle()
         if (pending.size === 0) return
       }
     },
-    get realtimeStats() {
-      return stats
-    },
-    set realtimeStats(fn) {
-      stats = fn
-    },
-  } as BookingServices
+  })
   app.decorate('booking', services)
   app.addHook('onClose', async () => {
     await services.idle()
-    bookings.stop()
+    booking.stop()
   })
 })
 

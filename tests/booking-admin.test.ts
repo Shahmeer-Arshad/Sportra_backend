@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ABUSE_ABANDONED_HOLDS, ABUSE_NO_SHOWS } from '../src/modules/booking/booking.admin'
+import { ABUSE_ABANDONED_HOLDS, ABUSE_NO_SHOWS } from '../src/modules/booking/booking.domain'
 import { createBookingJobs } from '../src/modules/booking/booking.jobs'
 import {
   Fixture,
