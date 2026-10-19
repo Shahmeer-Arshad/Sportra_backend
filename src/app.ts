@@ -11,11 +11,15 @@ import securityPlugin from './plugins/security'
 import swaggerPlugin from './plugins/swagger'
 import redisPlugin from './plugins/redis'
 import mailerPlugin from './plugins/mailer'
+import hotLanePlugin from './plugins/hotlane'
+import bookingPlugin from './plugins/booking'
+import realtimePlugin from './plugins/realtime'
 import { randomUUID } from 'crypto'
 
 // Routes
 import { identityRoutes } from './modules/identity/identity.routes'
 import { venueRoutes } from './modules/venue/venue.routes'
+import { bookingRoutes } from './modules/booking/booking.routes'
 import { healthRoutes } from './modules/health/health.routes'
 
 /**
@@ -51,6 +55,16 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
   })
 
+  // Many HTTP clients send `Content-Type: application/json` even on requests with no body
+  // (DELETE /hold, POST /no-show ...). Fastify rejects that by default; treat an empty body as "no body".
+  // Invalid JSON and prototype-poisoning payloads are still refused.
+  const jsonParser = app.getDefaultJsonParser('error', 'error')
+  app.removeContentTypeParser('application/json')
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    if (body === '' || body === undefined) return done(null, undefined)
+    jsonParser(req, body as string, done)
+  })
+
   // ─────────────────────────────────────────
   // Register plugins (order matters!)
   // ─────────────────────────────────────────
@@ -62,6 +76,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(mailerPlugin)
   await app.register(fastifyCookie)
   await app.register(jwtPlugin)
+  await app.register(hotLanePlugin)
+  await app.register(bookingPlugin)
+  await app.register(realtimePlugin)
 
   // ─────────────────────────────────────────
   // Global error handler
@@ -163,6 +180,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.register(healthRoutes)
   app.register(identityRoutes)
   app.register(venueRoutes)
+  app.register(bookingRoutes)
 
   return app
 }

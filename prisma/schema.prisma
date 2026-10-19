@@ -147,36 +147,36 @@ model Area {
 }
 
 model Venue {
-  id                      String    @id @db.Uuid
-  ownerUserId             String    @map("owner_user_id") @db.Uuid
+  id                      String                                @id @db.Uuid
+  ownerUserId             String                                @map("owner_user_id") @db.Uuid
   name                    String
-  slug                    String    @unique
+  slug                    String                                @unique
   city                    String
-  areaId                  String?   @map("area_id") @db.Uuid
-  area                    Area?     @relation(fields: [areaId], references: [id])
+  areaId                  String?                               @map("area_id") @db.Uuid
+  area                    Area?                                 @relation(fields: [areaId], references: [id])
   address                 String
   lat                     Float
   lng                     Float
   // Generated from lat/lng in the migration. Never written by the app; read with raw SQL.
   location                Unsupported("geography(Point,4326)")?
-  amenities               String[]  @default([])
-  whatsappNumber          String?   @map("whatsapp_number")
-  contactPhone            String?   @map("contact_phone")
-  contactEmail            String?   @map("contact_email")
-  timezone                String    @default("Asia/Karachi")
-  operatingHours          Json      @map("operating_hours") @db.JsonB
-  cancellationCutoffHours Int       @default(12) @map("cancellation_cutoff_hours")
-  commissionBps           Int       @default(0) @map("commission_bps")
-  verificationStatus      String    @default("DRAFT") @map("verification_status")
-  isActive                Boolean   @default(true) @map("is_active")
-  photos                  String[]  @default([])
-  onboardingStep          Int       @default(1) @map("onboarding_step")
-  submittedAt             DateTime? @map("submitted_at") @db.Timestamptz
-  verifiedAt              DateTime? @map("verified_at") @db.Timestamptz
-  verifiedBy              String?   @map("verified_by") @db.Uuid
-  version                 Int       @default(1)
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  amenities               String[]                              @default([])
+  whatsappNumber          String?                               @map("whatsapp_number")
+  contactPhone            String?                               @map("contact_phone")
+  contactEmail            String?                               @map("contact_email")
+  timezone                String                                @default("Asia/Karachi")
+  operatingHours          Json                                  @map("operating_hours") @db.JsonB
+  cancellationCutoffHours Int                                   @default(12) @map("cancellation_cutoff_hours")
+  commissionBps           Int                                   @default(0) @map("commission_bps")
+  verificationStatus      String                                @default("DRAFT") @map("verification_status")
+  isActive                Boolean                               @default(true) @map("is_active")
+  photos                  String[]                              @default([])
+  onboardingStep          Int                                   @default(1) @map("onboarding_step")
+  submittedAt             DateTime?                             @map("submitted_at") @db.Timestamptz
+  verifiedAt              DateTime?                             @map("verified_at") @db.Timestamptz
+  verifiedBy              String?                               @map("verified_by") @db.Uuid
+  version                 Int                                   @default(1)
+  createdAt               DateTime                              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime                              @updatedAt @map("updated_at") @db.Timestamptz
 
   courts  Court[]
   reviews VenueReview[]
@@ -283,4 +283,222 @@ model AuditLog {
   at        DateTime @default(now()) @db.Timestamptz
 
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────
+// Booking module (Phase 2)
+// Exclusion constraints, partial indexes, the generated balance column and the SQL functions
+// (cancel_booking_items, create_confirmed_items, uuid_v7) live in the migration SQL.
+// Inventory paths use raw SQL; these models serve plain reads and test clean-up.
+// ─────────────────────────────────────────
+model Slot {
+  id            String    @id @db.Uuid
+  courtId       String    @map("court_id") @db.Uuid
+  venueId       String    @map("venue_id") @db.Uuid
+  startAt       DateTime  @map("start_at") @db.Timestamptz
+  endAt         DateTime  @map("end_at") @db.Timestamptz
+  businessDate  DateTime  @map("business_date") @db.Date
+  priceMinor    BigInt    @map("price_minor")
+  priceTag      String    @map("price_tag") // PEAK | OFF_PEAK
+  status        String    @default("AVAILABLE") // AVAILABLE | HELD | BOOKED_APP | BOOKED_WALKIN | BLOCKED
+  holdId        String?   @map("hold_id") @db.Uuid
+  holdExpiresAt DateTime? @map("hold_expires_at") @db.Timestamptz
+  bookingId     String?   @map("booking_id") @db.Uuid
+  blockReason   String?   @map("block_reason")
+  blockRef      String?   @map("block_ref") @db.Uuid
+  blockNote     String?   @map("block_note")
+  version       Int       @default(0)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  items BookingItem[]
+
+  @@unique([courtId, startAt], map: "slots_court_start_key")
+  @@index([venueId, businessDate, courtId, startAt], map: "slots_grid")
+  @@map("slots")
+}
+
+model Booking {
+  id                      String    @id @db.Uuid
+  ref                     String    @unique
+  venueId                 String    @map("venue_id") @db.Uuid
+  courtId                 String    @map("court_id") @db.Uuid
+  userId                  String?   @map("user_id") @db.Uuid
+  source                  String // APP | WALKIN | MANUAL | TOURNAMENT
+  customerName            String    @map("customer_name")
+  customerPhone           String    @map("customer_phone")
+  customerEmail           String?   @map("customer_email")
+  headcount               Int?
+  status                  String
+  paymentMode             String    @map("payment_mode")
+  paymentStatus           String    @default("UNPAID") @map("payment_status")
+  startAt                 DateTime  @map("start_at") @db.Timestamptz
+  endAt                   DateTime  @map("end_at") @db.Timestamptz
+  businessDate            DateTime  @map("business_date") @db.Date
+  totalMinor              BigInt    @map("total_minor")
+  originalTotalMinor      BigInt    @map("original_total_minor")
+  depositMinor            BigInt    @default(0) @map("deposit_minor")
+  onlinePaidMinor         BigInt    @default(0) @map("online_paid_minor")
+  cashCollectedMinor      BigInt    @default(0) @map("cash_collected_minor")
+  refundedMinor           BigInt    @default(0) @map("refunded_minor")
+  forfeitedMinor          BigInt    @default(0) @map("forfeited_minor")
+  refundPendingMinor      BigInt    @default(0) @map("refund_pending_minor")
+  commissionMinor         BigInt    @default(0) @map("commission_minor")
+  slotIds                 String[]  @default([]) @map("slot_ids") @db.Uuid
+  holdId                  String?   @map("hold_id") @db.Uuid
+  holdExpiresAt           DateTime? @map("hold_expires_at") @db.Timestamptz
+  cancellationCutoffHours Int       @default(12) @map("cancellation_cutoff_hours") @db.SmallInt
+  cancelledAt             DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledBy             String?   @map("cancelled_by")
+  cancelReason            String?   @map("cancel_reason")
+  checkedInAt             DateTime? @map("checked_in_at") @db.Timestamptz
+  noShowAt                DateTime? @map("no_show_at") @db.Timestamptz
+  createdBy               String?   @map("created_by") @db.Uuid
+  version                 Int       @default(0)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  // Generated column (see migration). Read-only.
+  balanceDueMinor         BigInt?   @default(dbgenerated()) @map("balance_due_minor")
+
+  items         BookingItem[]
+  cancellations BookingCancellation[]
+  invites       Invite[]
+
+  @@index([userId, startAt(sort: Desc)], map: "bookings_user")
+  @@index([venueId, startAt, status], map: "bookings_venue")
+  @@index([venueId, businessDate], map: "bookings_venue_day")
+  @@map("bookings")
+}
+
+model BookingCancellation {
+  id             String   @id @db.Uuid
+  bookingId      String   @map("booking_id") @db.Uuid
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  cancelledBy    String   @map("cancelled_by")
+  reason         String?
+  actorId        String?  @map("actor_id") @db.Uuid
+  refundDueMinor BigInt   @default(0) @map("refund_due_minor")
+  forfeitMinor   BigInt   @default(0) @map("forfeit_minor")
+  refundedMinor  BigInt   @default(0) @map("refunded_minor")
+  result         Json     @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  items BookingItem[]
+
+  @@index([bookingId], map: "booking_cancellations_booking")
+  @@map("booking_cancellations")
+}
+
+model BookingItem {
+  id                String               @id @db.Uuid
+  bookingId         String               @map("booking_id") @db.Uuid
+  booking           Booking              @relation(fields: [bookingId], references: [id])
+  slotId            String               @map("slot_id") @db.Uuid
+  slot              Slot                 @relation(fields: [slotId], references: [id])
+  courtId           String               @map("court_id") @db.Uuid
+  venueId           String               @map("venue_id") @db.Uuid
+  startAt           DateTime             @map("start_at") @db.Timestamptz
+  endAt             DateTime             @map("end_at") @db.Timestamptz
+  priceMinor        BigInt               @map("price_minor")
+  onlinePaidMinor   BigInt               @default(0) @map("online_paid_minor")
+  depositShareMinor BigInt               @default(0) @map("deposit_share_minor")
+  status            String               @default("CONFIRMED") // CONFIRMED | CANCELLED | REFUNDED
+  refundDueMinor    BigInt               @default(0) @map("refund_due_minor")
+  forfeitMinor      BigInt               @default(0) @map("forfeit_minor")
+  cancellationId    String?              @map("cancellation_id") @db.Uuid
+  cancellation      BookingCancellation? @relation(fields: [cancellationId], references: [id])
+  cancelledAt       DateTime?            @map("cancelled_at") @db.Timestamptz
+  cancelledBy       String?              @map("cancelled_by")
+  cancelReason      String?              @map("cancel_reason")
+  version           Int                  @default(0)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime             @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@index([bookingId, status], map: "booking_items_booking")
+  @@index([venueId, startAt], map: "booking_items_venue_time")
+  @@map("booking_items")
+}
+
+model IdempotencyKey {
+  key         String
+  scope       String
+  requestHash String   @map("request_hash")
+  response    Json?    @db.JsonB
+  statusCode  Int?     @map("status_code")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([scope, key])
+  @@index([createdAt], map: "idempotency_keys_created")
+  @@map("idempotency_keys")
+}
+
+model Invite {
+  id        String       @id @db.Uuid
+  bookingId String       @map("booking_id") @db.Uuid
+  booking   Booking      @relation(fields: [bookingId], references: [id])
+  tokenHash String       @unique @map("token_hash")
+  createdBy String       @map("created_by") @db.Uuid
+  expiresAt DateTime     @map("expires_at") @db.Timestamptz
+  revokedAt DateTime?    @map("revoked_at") @db.Timestamptz
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  rsvps     InviteRsvp[]
+
+  @@index([bookingId], map: "invites_booking")
+  @@map("invites")
+}
+
+model InviteRsvp {
+  id        String   @id @db.Uuid
+  inviteId  String   @map("invite_id") @db.Uuid
+  invite    Invite   @relation(fields: [inviteId], references: [id])
+  name      String
+  phone     String?
+  rsvpKey   String   @map("rsvp_key")
+  status    String // GOING | NOT_GOING
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([inviteId, rsvpKey], map: "invite_rsvps_unique")
+  @@map("invite_rsvps")
+}
+
+model BookingSettings {
+  venueId           String   @id @map("venue_id") @db.Uuid
+  payAtVenueEnabled Boolean  @default(false) @map("pay_at_venue_enabled")
+  updatedBy         String?  @map("updated_by") @db.Uuid
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("booking_settings")
+}
+
+model VenueBlocklist {
+  venueId   String   @map("venue_id") @db.Uuid
+  phone     String
+  reason    String?
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([venueId, phone])
+  @@map("venue_blocklist")
+}
+
+model OutageLock {
+  id            String    @id @db.Uuid
+  venueId       String    @map("venue_id") @db.Uuid
+  courtIds      String[]  @map("court_ids") @db.Uuid
+  windowStart   DateTime  @map("window_start") @db.Timestamptz
+  windowEnd     DateTime  @map("window_end") @db.Timestamptz
+  reason        String
+  note          String?
+  status        String    @default("PROCESSING") // PROCESSING | ACTIVE | RELEASED
+  totalBookings Int       @default(0) @map("total_bookings")
+  processed     Int       @default(0)
+  failed        Int       @default(0)
+  manualToCall  Json      @default("[]") @map("manual_to_call") @db.JsonB
+  createdBy     String    @map("created_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  releasedAt    DateTime? @map("released_at") @db.Timestamptz
+  releasedBy    String?   @map("released_by") @db.Uuid
+
+  @@index([venueId, createdAt(sort: Desc)], map: "outage_locks_venue")
+  @@map("outage_locks")
 }

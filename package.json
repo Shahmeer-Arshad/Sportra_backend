@@ -39,6 +39,7 @@
     "nodemailer": "^10.1.1",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
+    "socket.io": "^4.8.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -52,6 +53,7 @@
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "prisma": "^5.22.0",
+    "socket.io-client": "^4.8.4",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

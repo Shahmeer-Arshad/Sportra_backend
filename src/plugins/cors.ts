@@ -26,7 +26,14 @@ const corsPlugin = fp(async (app: FastifyInstance) => {
       }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'If-None-Match',
+      'X-Request-Id',
+    ],
+    exposedHeaders: ['ETag', 'Idempotent-Replayed', 'X-Request-Id'],
     credentials: true,
   })
 

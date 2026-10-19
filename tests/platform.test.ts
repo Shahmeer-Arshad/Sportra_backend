@@ -20,6 +20,8 @@ describe('platform behaviour (error handler, security, docs)', () => {
     app.get('/__test/app-error', async () => {
       throw new AppError('custom', 418, true, 'TEAPOT')
     })
+    app.post('/__test/echo', async (req) => ({ body: req.body ?? null }))
+    app.delete('/__test/nobody', async (req) => ({ body: req.body ?? null }))
     await app.ready()
   })
   afterAll(async () => {
@@ -114,6 +116,39 @@ describe('platform behaviour (error handler, security, docs)', () => {
     await limited.close()
     expect(last).toBe(429)
     expect(limitedBody.code).toBe('RATE_LIMITED')
+  })
+
+  describe('JSON bodies', () => {
+    const headers = { 'content-type': 'application/json' }
+    it('a request that says it is JSON but has no body is accepted (clients often do this)', async () => {
+      const d = await app.inject({ method: 'DELETE', url: '/__test/nobody', headers })
+      expect(d.statusCode).toBe(200)
+      expect(d.json()).toEqual({ body: null })
+      const p = await app.inject({ method: 'POST', url: '/__test/echo', headers })
+      expect(p.statusCode).toBe(200)
+    })
+    it('real JSON still works', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/__test/echo',
+        headers,
+        payload: { a: 1 },
+      })
+      expect(r.json()).toEqual({ body: { a: 1 } })
+    })
+    it('broken JSON is still a 400, not a crash', async () => {
+      const r = await app.inject({ method: 'POST', url: '/__test/echo', headers, payload: '{"a":' })
+      expect(r.statusCode).toBe(400)
+    })
+    it('prototype-poisoning payloads are still refused', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/__test/echo',
+        headers,
+        payload: '{"__proto__": {"admin": true}}',
+      })
+      expect(r.statusCode).toBe(400)
+    })
   })
 })
 

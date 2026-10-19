@@ -46,3 +46,45 @@ export function businessDate(
   const mins = hour * 60 + minute
   return crossesMidnight && mins < open && mins < close ? prevDay(date) : date
 }
+
+/** Offset (ms) of a zone from UTC at a given instant: local wall clock minus UTC. */
+function zoneOffsetMs(instant: Date, tz: string): number {
+  const f = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+  const p = Object.fromEntries(f.formatToParts(instant).map((x) => [x.type, x.value]))
+  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second)
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000
+}
+
+/**
+ * The UTC instant of a local wall-clock time: `date` (yyyy-mm-dd, venue-local) plus `minutes`
+ * since local midnight (may exceed 1440 for after-midnight slots). Uses the IANA zone rules, so
+ * zones with daylight saving are handled; no fixed offsets.
+ */
+export function zonedTimeToUtc(date: string, minutes: number, tz = DEFAULT_TZ): Date {
+  const [y, m, d] = date.split('-').map(Number)
+  const wall = Date.UTC(y, m - 1, d, 0, minutes)
+  let guess = wall - zoneOffsetMs(new Date(wall), tz)
+  // the offset may differ at the corrected instant (daylight saving boundary): refine once
+  guess = wall - zoneOffsetMs(new Date(guess), tz)
+  return new Date(guess)
+}
+
+/** Today's date in a zone (yyyy-mm-dd). */
+export function todayIn(tz = DEFAULT_TZ, now = new Date()): string {
+  return localParts(now, tz).date
+}
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}

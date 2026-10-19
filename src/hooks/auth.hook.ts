@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { ForbiddenError, UnauthorizedError } from '../utils/errors'
 
@@ -12,11 +13,23 @@ export async function authenticate(request: FastifyRequest, _reply: FastifyReply
   } catch {
     throw new UnauthorizedError('Invalid or expired token', 'TOKEN_INVALID')
   }
-  const user = await request.server.prisma.user.findUnique({
-    where: { id: request.user.sub },
+  request.user.role = await checkSession(request.server.prisma, request.user)
+}
+
+/**
+ * Is this (already signature-verified) token still good? The user must be ACTIVE and the token must
+ * have been issued after `token_valid_after`. Returns the CURRENT platform role from the database.
+ * Shared by the HTTP guard and the real-time socket handshake.
+ */
+export async function checkSession(
+  prisma: PrismaClient,
+  payload: { sub: string; iat?: number },
+): Promise<'USER' | 'PLATFORM_ADMIN'> {
+  const user = await prisma.user.findUnique({
+    where: { id: payload.sub },
     select: { status: true, tokenValidAfter: true, platformRole: true },
   })
-  const issuedAtMs = (request.user.iat ?? 0) * 1000
+  const issuedAtMs = (payload.iat ?? 0) * 1000
   // iat has 1-second precision, so compare at second precision
   if (
     !user ||
@@ -26,7 +39,7 @@ export async function authenticate(request: FastifyRequest, _reply: FastifyReply
     throw new UnauthorizedError('Session is no longer valid', 'TOKEN_REVOKED')
   }
   // Role always comes from the database, never from a possibly stale token
-  request.user.role = user.platformRole as 'USER' | 'PLATFORM_ADMIN'
+  return user.platformRole as 'USER' | 'PLATFORM_ADMIN'
 }
 
 /** Platform admin only. Use after `authenticate`. */

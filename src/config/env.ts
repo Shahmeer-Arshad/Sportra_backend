@@ -31,6 +31,15 @@ const envSchema = z.object({
   // Outbox relay worker
   OUTBOX_POLL_MS: z.coerce.number().default(500),
   OUTBOX_BATCH: z.coerce.number().default(100),
+  // Booking (Phase 2)
+  HOLD_SECONDS: z.coerce.number().int().min(1).default(300), // a hold lasts exactly 5 minutes
+  SLOT_HORIZON_DAYS: z.coerce.number().int().min(1).max(365).default(60),
+  MAX_PENDING_HOLDS: z.coerce.number().int().min(1).default(2),
+  MAX_UNPAID_BOOKINGS: z.coerce.number().int().min(1).default(1),
+  NO_SHOW_AFTER_MINUTES: z.coerce.number().int().min(1).default(20),
+  SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(60),
+  // Signs QR entry passes. Falls back to a value derived from ACCESS_TOKEN_SECRET when unset.
+  QR_PASS_SECRET: z.string().min(16).optional(),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
