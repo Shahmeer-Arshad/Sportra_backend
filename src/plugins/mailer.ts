@@ -16,6 +16,8 @@ const mailerPlugin = fp(async (app: FastifyInstance) => {
       from: env.MAIL_FROM,
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
+      user: env.SMTP_USER || undefined,
+      pass: env.SMTP_PASS || undefined,
       capture: env.NODE_ENV === 'test',
     }),
   )

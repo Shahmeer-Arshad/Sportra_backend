@@ -27,6 +27,9 @@ const envSchema = z.object({
   // Email (MailHog in dev). In tests mail is captured in memory.
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().default(51025),
+  // Set both for a real provider (e.g. Gmail app password). Leave empty for MailHog.
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('Sportra <no-reply@sportra.local>'),
   // Outbox relay worker
   OUTBOX_POLL_MS: z.coerce.number().default(500),

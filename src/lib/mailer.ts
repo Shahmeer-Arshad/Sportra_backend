@@ -17,6 +17,8 @@ export function createMailer(opts: {
   from: string
   host: string
   port: number
+  user?: string
+  pass?: string
   capture: boolean
 }): Mailer {
   if (opts.capture) {
@@ -26,7 +28,14 @@ export function createMailer(opts: {
       },
     }
   }
-  const transport = nodemailer.createTransport({ host: opts.host, port: opts.port, secure: false })
+  const authed = Boolean(opts.user && opts.pass)
+  const transport = nodemailer.createTransport({
+    host: opts.host,
+    port: opts.port,
+    secure: opts.port === 465, // implicit TLS on 465; 587 upgrades with STARTTLS
+    requireTLS: authed && opts.port !== 465,
+    auth: authed ? { user: opts.user, pass: opts.pass } : undefined,
+  })
   return {
     async send(mail) {
       await transport.sendMail({ from: opts.from, ...mail })
