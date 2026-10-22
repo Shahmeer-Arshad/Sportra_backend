@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt'
 import { uuidv7 } from '../src/lib/id'
 import { createHotLane } from '../src/lib/hotlane'
 import { createBookingModule } from '../src/modules/booking/booking.module'
+import { syncRbac } from './seed-rbac'
 
 /**
  * Dev seed (safe to run again): an admin, areas for Karachi and Lahore, one demo owner and 20
@@ -54,6 +55,10 @@ const slug = (s: string) =>
 
 async function main() {
   console.log('🌱 Seeding...')
+  const rbac = await syncRbac(prisma)
+  console.log(
+    `✅ RBAC synced (${rbac.permissionsAdded.length} new permissions, ${rbac.granted.length} grants)`,
+  )
   const adminEmail = (process.env.ADMIN_SEED_EMAIL ?? 'admin@sportra.local').toLowerCase()
   const adminPassword = process.env.ADMIN_SEED_PASSWORD ?? 'Admin@12345'
   await prisma.user.upsert({

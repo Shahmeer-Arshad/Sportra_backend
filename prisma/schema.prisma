@@ -39,6 +39,7 @@ model User {
   updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   memberships   VenueMembership[]
+  userRoles     UserRole[]
   otpChallenges OtpChallenge[]
   refreshTokens RefreshToken[]
   consents      WhatsappConsent[]
@@ -780,4 +781,65 @@ model MockGatewayRefund {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("mock_gateway_refunds")
+}
+
+// ─────────────────────────────────────────
+// RBAC: users -> user_roles -> roles -> role_permissions -> permissions.
+// Final state lives in migration 20260522000000_rbac (CHECKs, partial uniques, composite FK).
+// ─────────────────────────────────────────
+model Permission {
+  id          String   @id @db.Uuid
+  code        String   @unique // resource.action, e.g. booking.cancel.own
+  resource    String
+  action      String
+  description String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id          String   @id @db.Uuid
+  code        String   @unique // USER | GROUND_OWNER | ADMIN | TOURNAMENT_ORGANIZER
+  name        String
+  description String
+  scope       String // PLATFORM | VENUE
+  isSystem    Boolean  @default(true) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@unique([id, scope])
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String     @map("permission_id") @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id         String   @id @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  roleId     String   @map("role_id") @db.Uuid
+  role       Role     @relation(fields: [roleId], references: [id])
+  scope      String // copy of roles.scope, kept in step by a composite FK
+  venueId    String?  @map("venue_id") @db.Uuid // set for VENUE scope, null for PLATFORM
+  isActive   Boolean  @default(true) @map("is_active")
+  assignedBy String?  @map("assigned_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, isActive])
+  @@index([venueId])
+  @@map("user_roles")
 }
