@@ -42,6 +42,7 @@ export const acceptInvitationMediator =
           status: 'ACTIVE',
           signupIntent: 'STAFF',
         })
+        await q.grantRole(user.id, 'USER')
         await q.emit(userEvent(user))
       }
       await q.upsertMembership(user!.id, inv.venueId, inv.role, inv.invitedBy)

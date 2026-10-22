@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { authenticate, requireAdmin, requireVenueRole } from '../../hooks/auth.hook'
+import { requirePermission } from '../../hooks/permission.hook'
 import { createVenueController } from './venue.controller'
 import * as S from './venue.schema'
 
@@ -15,7 +16,10 @@ export async function venueRoutes(app: FastifyInstance) {
       r.addHook('onRequest', authenticate)
       r.post(
         '/venues',
-        { schema: { tags: ['Venue'], security: sec, body: S.createVenueBody } },
+        {
+          onRequest: [requirePermission('venue.create')],
+          schema: { tags: ['Venue'], security: sec, body: S.createVenueBody },
+        },
         c.createVenue,
       )
       r.get('/me/venues', { schema: { tags: ['Venue'], security: sec } }, c.myVenues)

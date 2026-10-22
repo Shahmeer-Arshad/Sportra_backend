@@ -18,7 +18,7 @@ type RegisterInput = {
   password: string
   fullName: string
   phone?: string
-  signupIntent?: 'PLAYER' | 'OWNER'
+  signupIntent?: 'USER' | 'GROUND_OWNER'
   whatsappConsent?: { optIn: boolean; textVersion?: string }
 }
 
@@ -47,8 +47,11 @@ export const signupMediator = ({ repo, otp, session }: IdentityDeps) => ({
         passwordHash,
         fullName: input.fullName.trim(),
         phone: input.phone ?? null,
-        signupIntent: input.signupIntent ?? 'PLAYER',
+        signupIntent: input.signupIntent ?? 'USER',
       })
+      // Roles decide what the account may do: everyone is a USER, owners are also GROUND_OWNER
+      await q.grantRole(u.id, 'USER')
+      if (input.signupIntent === 'GROUND_OWNER') await q.grantRole(u.id, 'GROUND_OWNER')
       if (input.whatsappConsent?.optIn) {
         const consent = { action: 'OPT_IN', source: 'SIGNUP_FORM' } as const
         await recordConsent(

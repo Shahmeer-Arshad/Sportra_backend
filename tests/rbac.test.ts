@@ -6,6 +6,8 @@ import { syncRbac } from '../prisma/seed-rbac'
 import { API_MAP, PUBLIC } from '../src/modules/rbac/rbac.api-map'
 import { buildCatalog, ROLE_CODES } from '../src/modules/rbac/rbac.catalog'
 import { buildApp } from '../src/app'
+import { FastifyInstance } from 'fastify'
+import { call, cleanupTestData, lastCode, makeApp, PASSWORD, post, uniqueEmail } from './helpers'
 
 const prisma = new PrismaClient()
 const catalog = buildCatalog()
@@ -88,6 +90,7 @@ describe('user_roles constraints', () => {
   const userId = uuidv7()
   const venueId = uuidv7()
   const role = (code: string) => prisma.role.findUniqueOrThrow({ where: { code } })
+  let venueRoleId = ''
 
   beforeAll(async () => {
     await syncRbac(prisma)
@@ -99,22 +102,36 @@ describe('user_roles constraints', () => {
         status: 'ACTIVE',
       },
     })
+    // none of the 4 system roles is venue-scoped any more, so use a throw-away one
+    venueRoleId = uuidv7()
+    await prisma.role.create({
+      data: {
+        id: venueRoleId,
+        code: 'TEST_VENUE_ROLE',
+        name: 'T',
+        description: 'T',
+        scope: 'VENUE',
+        isSystem: false,
+      },
+    })
   })
   afterAll(async () => {
     await prisma.userRole.deleteMany({ where: { userId } })
     await prisma.user.delete({ where: { id: userId } })
+    await prisma.role.delete({ where: { id: venueRoleId } })
   })
 
   it('rejects a platform role that names a venue and a venue role that names none', async () => {
     const user = await role('USER')
-    const owner = await role('GROUND_OWNER')
     await expect(
       prisma.userRole.create({
         data: { id: uuidv7(), userId, roleId: user.id, scope: 'PLATFORM', venueId },
       }),
     ).rejects.toThrow()
     await expect(
-      prisma.userRole.create({ data: { id: uuidv7(), userId, roleId: owner.id, scope: 'VENUE' } }),
+      prisma.userRole.create({
+        data: { id: uuidv7(), userId, roleId: venueRoleId, scope: 'VENUE' },
+      }),
     ).rejects.toThrow()
   })
 
@@ -129,13 +146,78 @@ describe('user_roles constraints', () => {
 
   it('allows one platform role once, and one venue role once per venue', async () => {
     const user = await role('USER')
-    const owner = await role('GROUND_OWNER')
     const make = (roleId: string, scope: string, v?: string) =>
       prisma.userRole.create({ data: { id: uuidv7(), userId, roleId, scope, venueId: v } })
     await make(user.id, 'PLATFORM')
     await expect(make(user.id, 'PLATFORM')).rejects.toThrow()
-    await make(owner.id, 'VENUE', venueId)
-    await expect(make(owner.id, 'VENUE', venueId)).rejects.toThrow()
-    await make(owner.id, 'VENUE', uuidv7())
+    await make(venueRoleId, 'VENUE', venueId)
+    await expect(make(venueRoleId, 'VENUE', venueId)).rejects.toThrow()
+    await make(venueRoleId, 'VENUE', uuidv7())
+  })
+})
+
+describe('only a ground owner can create a venue', () => {
+  let app: FastifyInstance
+  const body = {
+    name: 'Role Test Arena',
+    city: 'Testville',
+    address: '12 Test Road, Testville',
+    lat: 24.86,
+    lng: 67.0,
+    operatingHours: { mon: [{ open: '09:00', close: '11:00' }] },
+  }
+  const register = async (signupIntent?: string) => {
+    const email = uniqueEmail('role')
+    const r = await post(app, '/api/v1/public/auth/register', {
+      email,
+      password: PASSWORD,
+      fullName: 'Role Test',
+      ...(signupIntent && { signupIntent }),
+    })
+    expect(r.statusCode).toBe(202)
+    const v = await post(app, '/api/v1/public/auth/verify-email', { email, code: lastCode(email) })
+    return { token: v.json().accessToken as string, userId: v.json().data.user.id as string }
+  }
+
+  beforeAll(async () => {
+    await syncRbac(prisma)
+    app = await makeApp()
+  })
+  afterAll(async () => {
+    await cleanupTestData(prisma)
+    await app.close()
+  })
+
+  it('a plain user gets the USER role only and cannot create a venue', async () => {
+    const u = await register()
+    const roles = await prisma.userRole.findMany({
+      where: { userId: u.userId },
+      include: { role: true },
+    })
+    expect(roles.map((r) => r.role.code)).toEqual(['USER'])
+    const r = await call(app, 'POST', '/api/v1/venues', u.token, body)
+    expect(r.statusCode).toBe(403)
+    expect(r.json().code).toBe('PERMISSION_DENIED')
+  })
+
+  it('signing up with signupIntent GROUND_OWNER gives the role and allows creating a venue', async () => {
+    const u = await register('GROUND_OWNER')
+    const roles = await prisma.userRole.findMany({
+      where: { userId: u.userId },
+      include: { role: true },
+    })
+    expect(roles.map((r) => r.role.code).sort()).toEqual(['GROUND_OWNER', 'USER'])
+    const r = await call(app, 'POST', '/api/v1/venues', u.token, body)
+    expect(r.statusCode).toBe(201)
+  })
+
+  it('rejects an unknown signupIntent', async () => {
+    const r = await post(app, '/api/v1/public/auth/register', {
+      email: uniqueEmail('role'),
+      password: PASSWORD,
+      fullName: 'Role Test',
+      signupIntent: 'ADMIN',
+    })
+    expect(r.statusCode).toBe(400)
   })
 })

@@ -2,11 +2,13 @@ import { Prisma, PrismaClient } from '@prisma/client'
 import { uuidv7 } from '../../lib/id'
 import { Db } from '../../lib/outbox'
 import { eventWrites, makeRepository } from '../../lib/repository'
+import { roleQueries } from '../rbac/rbac.queries'
 
 /** Every identity-module query. Bound to a transaction client inside `transaction(fn)`. */
 function queries(db: Db) {
   return {
     ...eventWrites(db),
+    ...roleQueries(db),
 
     // ───────── users ─────────
     userByEmail: (email: string) => db.user.findUnique({ where: { email } }),

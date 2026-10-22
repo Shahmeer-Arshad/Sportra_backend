@@ -29,7 +29,7 @@ model User {
   whatsappOptOutAt         DateTime? @map("whatsapp_opt_out_at") @db.Timestamptz
   platformRole             String    @default("USER") @map("platform_role")
   status                   String    @default("PENDING_VERIFICATION")
-  signupIntent             String    @default("PLAYER") @map("signup_intent")
+  signupIntent             String    @default("USER") @map("signup_intent")
   noShowCount              Int       @default(0) @map("no_show_count")
   failedLoginCount         Int       @default(0) @map("failed_login_count")
   lockedUntil              DateTime? @map("locked_until") @db.Timestamptz

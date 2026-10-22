@@ -5,7 +5,9 @@
  *
  * `permissions` takes exact codes ('court.create') or a whole resource ('pos.*'). Codes come from
  * `rbac.api-map.ts`. A code that does not exist stops the seed with an error.
- * `scope`: PLATFORM = holds everywhere; VENUE = granted per venue (user_roles.venue_id).
+ * `scope`: PLATFORM = the account holds it everywhere; VENUE = granted per venue (user_roles.venue_id).
+ *
+ * Becoming a ground owner: sign up with signupIntent GROUND_OWNER (an admin can grant it later).
  * To add a role later (for example FRONT_DESK), add an entry here and seed.
  */
 export interface RoleDef {
@@ -20,22 +22,16 @@ export const ROLES = {
     name: 'User',
     description: 'Every signed-up player',
     scope: 'PLATFORM',
-    permissions: [
-      'profile.*',
-      'session.*',
-      'booking.*',
-      'venue.create', // starting a venue is how a user becomes a ground owner
-      'venue.list_own',
-      'tournament.join',
-      'chat.use',
-    ],
+    permissions: ['profile.*', 'session.*', 'booking.*', 'tournament.join', 'chat.use'],
   },
 
   GROUND_OWNER: {
     name: 'Ground owner',
     description: 'Owns a ground or venue',
-    scope: 'VENUE',
+    scope: 'PLATFORM', // account-level: "may own grounds". Which venues stays in venue_memberships
     permissions: [
+      'venue.create',
+      'venue.list_own',
       'venue.read',
       'venue.update',
       'venue.submit',

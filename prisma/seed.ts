@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt'
 import { uuidv7 } from '../src/lib/id'
 import { createHotLane } from '../src/lib/hotlane'
 import { createBookingModule } from '../src/modules/booking/booking.module'
+import { roleQueries } from '../src/modules/rbac/rbac.queries'
 import { syncRbac } from './seed-rbac'
 
 /**
@@ -61,7 +62,7 @@ async function main() {
   )
   const adminEmail = (process.env.ADMIN_SEED_EMAIL ?? 'admin@sportra.local').toLowerCase()
   const adminPassword = process.env.ADMIN_SEED_PASSWORD ?? 'Admin@12345'
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
     create: {
@@ -77,6 +78,9 @@ async function main() {
   console.log(
     `✅ Admin: ${adminEmail} (log in, then enter the e-mailed code; dev mail is at http://localhost:58025)`,
   )
+  const roles = roleQueries(prisma)
+  await roles.grantRole(admin.id, 'USER')
+  await roles.grantRole(admin.id, 'ADMIN')
 
   const areaIds: { id: string; city: string; name: string; lat: number; lng: number }[] = []
   for (const [city, name, lat, lng, aliases] of AREAS) {
@@ -99,10 +103,13 @@ async function main() {
       fullName: 'Demo Owner',
       status: 'ACTIVE',
       emailVerifiedAt: new Date(),
-      signupIntent: 'OWNER',
+      signupIntent: 'GROUND_OWNER',
       passwordHash: await bcrypt.hash('Owner@12345', 12),
     },
   })
+
+  await roles.grantRole(owner.id, 'USER')
+  await roles.grantRole(owner.id, 'GROUND_OWNER')
 
   let created = 0
   for (let i = 0; i < 20; i++) {

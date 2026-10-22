@@ -17,7 +17,7 @@ export const registerBody = {
     password,
     fullName: { type: 'string', minLength: 2, maxLength: 120 },
     phone,
-    signupIntent: { type: 'string', enum: ['PLAYER', 'OWNER'] },
+    signupIntent: { type: 'string', enum: ['USER', 'GROUND_OWNER'] },
     whatsappConsent: {
       type: 'object',
       required: ['optIn'],

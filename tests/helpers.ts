@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt'
 import { buildApp } from '../src/app'
 import { testMailbox } from '../src/lib/mailer'
 import { uuidv7 } from '../src/lib/id'
+import { roleQueries } from '../src/modules/rbac/rbac.queries'
 import { addDays, todayIn } from '../src/lib/time'
 
 export const TEST_DOMAIN = '@t.sportra.test'
@@ -76,7 +77,7 @@ export function lastToken(email: string): string {
 /** Register + verify an account. Returns tokens and user. */
 export async function signupVerified(
   app: FastifyInstance,
-  opts: { email?: string; phone?: string; fullName?: string } = {},
+  opts: { email?: string; phone?: string; fullName?: string; groundOwner?: boolean } = {},
 ) {
   const email = opts.email ?? uniqueEmail()
   const reg = await post(app, '/api/v1/public/auth/register', {
@@ -84,6 +85,7 @@ export async function signupVerified(
     password: PASSWORD,
     fullName: opts.fullName ?? 'Test User',
     ...(opts.phone && { phone: opts.phone }),
+    ...(opts.groundOwner && { signupIntent: 'GROUND_OWNER' }),
   })
   if (reg.statusCode !== 202) throw new Error('register failed: ' + reg.body)
   const ver = await post(app, '/api/v1/public/auth/verify-email', { email, code: lastCode(email) })
@@ -151,6 +153,7 @@ export async function cleanupTestData(prisma: PrismaClient) {
   await prisma.$executeRaw`DELETE FROM refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${like})`
   await prisma.$executeRaw`DELETE FROM whatsapp_consents WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${like})`
   await prisma.$executeRaw`DELETE FROM otp_challenges WHERE email LIKE ${like}`
+  await prisma.$executeRaw`DELETE FROM user_roles WHERE user_id IN (${userIds})`
   await prisma.$executeRaw`DELETE FROM users WHERE email LIKE ${like}`
   await prisma.$executeRaw`DELETE FROM areas WHERE city = 'Testville'`
 }
@@ -176,6 +179,9 @@ export async function buildDraftVenue(
   owner: { accessToken: string },
   o: VenueOpts = {},
 ) {
+  // Only ground owners may create venues; the helper makes the test user one
+  const ownerId = (app.jwt.decode(owner.accessToken) as { sub: string }).sub
+  await roleQueries(app.prisma).grantRole(ownerId, 'GROUND_OWNER')
   const create = await call(app, 'POST', '/api/v1/venues', owner.accessToken, {
     name: o.name ?? 'Test Arena',
     city: o.city ?? 'Testville',

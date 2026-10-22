@@ -47,7 +47,7 @@ describe('owner onboarding', () => {
 
   it('needs a login and valid input', async () => {
     expect((await call(app, 'POST', '/api/v1/venues', undefined, {})).statusCode).toBe(401)
-    const owner = await signupVerified(app)
+    const owner = await signupVerified(app, { groundOwner: true })
     const bad = (extra: object) =>
       call(app, 'POST', '/api/v1/venues', owner.accessToken, {
         name: 'Test Arena',
@@ -66,7 +66,7 @@ describe('owner onboarding', () => {
   })
 
   it('unknown area is rejected', async () => {
-    const owner = await signupVerified(app)
+    const owner = await signupVerified(app, { groundOwner: true })
     const r = await call(app, 'POST', '/api/v1/venues', owner.accessToken, {
       name: 'Test Arena',
       city: 'Testville',
@@ -155,7 +155,7 @@ describe('owner onboarding', () => {
   })
 
   it('submit is blocked until the venue is complete, and says what is missing', async () => {
-    const owner = await signupVerified(app)
+    const owner = await signupVerified(app, { groundOwner: true })
     const create = await call(app, 'POST', '/api/v1/venues', owner.accessToken, {
       name: 'Empty Arena',
       city: 'Testville',
