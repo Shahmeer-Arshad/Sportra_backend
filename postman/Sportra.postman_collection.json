@@ -1,0 +1,4101 @@
+{
+  "info": {
+    "name": "Sportra API",
+    "description": "All Sportra backend endpoints. Import, then: (1) run 'Search venues'/'Availability grid' for data, (2) log in as player / owner / admin (Auth folder) - tokens are saved automatically into the collection variables and each folder uses the right one. Login codes arrive by e-mail (dev: MailHog http://localhost:58025); put the code in the otpCode variable. Base URL is the baseUrl variable (default http://localhost:3000). Bookings use tomorrow's date; set the dateOverride variable (YYYY-MM-DD) to book another day, for example today to test check-in (check-in only opens shortly before a slot starts).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "playerEmail",
+      "value": "player1@gmail.com"
+    },
+    {
+      "key": "playerPassword",
+      "value": "Player@12345"
+    },
+    {
+      "key": "ownerEmail",
+      "value": "demo.owner@sportra.local"
+    },
+    {
+      "key": "ownerPassword",
+      "value": "Owner@12345"
+    },
+    {
+      "key": "newOwnerEmail",
+      "value": "owner1@gmail.com"
+    },
+    {
+      "key": "newOwnerPassword",
+      "value": "Owner@12345"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@sportra.local"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@12345"
+    },
+    {
+      "key": "otpCode",
+      "value": "123456"
+    },
+    {
+      "key": "playerToken",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "playerUserId",
+      "value": ""
+    },
+    {
+      "key": "ownerUserId",
+      "value": ""
+    },
+    {
+      "key": "adminUserId",
+      "value": ""
+    },
+    {
+      "key": "targetUserId",
+      "value": ""
+    },
+    {
+      "key": "venueId",
+      "value": ""
+    },
+    {
+      "key": "venueSlug",
+      "value": ""
+    },
+    {
+      "key": "areaId",
+      "value": ""
+    },
+    {
+      "key": "courtId",
+      "value": ""
+    },
+    {
+      "key": "slotId",
+      "value": ""
+    },
+    {
+      "key": "slotId2",
+      "value": ""
+    },
+    {
+      "key": "newVenueId",
+      "value": ""
+    },
+    {
+      "key": "newCourtId",
+      "value": ""
+    },
+    {
+      "key": "ruleId",
+      "value": ""
+    },
+    {
+      "key": "membershipId",
+      "value": ""
+    },
+    {
+      "key": "staffEmail",
+      "value": "frontdesk1@gmail.com"
+    },
+    {
+      "key": "inviteToken",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "bookingRef",
+      "value": ""
+    },
+    {
+      "key": "itemId",
+      "value": ""
+    },
+    {
+      "key": "itemId2",
+      "value": ""
+    },
+    {
+      "key": "inviteId",
+      "value": ""
+    },
+    {
+      "key": "passToken",
+      "value": ""
+    },
+    {
+      "key": "posCourtId",
+      "value": ""
+    },
+    {
+      "key": "posCourtId2",
+      "value": ""
+    },
+    {
+      "key": "posSlotId",
+      "value": ""
+    },
+    {
+      "key": "posSlotId2",
+      "value": ""
+    },
+    {
+      "key": "posBookingId",
+      "value": ""
+    },
+    {
+      "key": "posBookingRef",
+      "value": ""
+    },
+    {
+      "key": "manualBookingId",
+      "value": ""
+    },
+    {
+      "key": "manualBookingRef",
+      "value": ""
+    },
+    {
+      "key": "outageId",
+      "value": ""
+    },
+    {
+      "key": "blockedPhone",
+      "value": "+923001234567"
+    },
+    {
+      "key": "newAreaId",
+      "value": ""
+    },
+    {
+      "key": "dateOverride",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    },
+    {
+      "key": "tomorrow",
+      "value": ""
+    },
+    {
+      "key": "blockFrom",
+      "value": ""
+    },
+    {
+      "key": "blockTo",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// keeps date variables fresh on every send",
+          "const f = (d) => d.toISOString().slice(0, 10);",
+          "const now = new Date(); const t = new Date(now.getTime() + 86400000);",
+          "pm.collectionVariables.set('today', f(now));",
+          "// 'tomorrow' is the booking date used everywhere; set dateOverride (YYYY-MM-DD) to use another day, e.g. today to test check-in",
+          "const day = pm.collectionVariables.get('dateOverride') || f(t);",
+          "pm.collectionVariables.set('tomorrow', day);",
+          "pm.collectionVariables.set('blockFrom', day + 'T10:00:00+05:00');",
+          "pm.collectionVariables.set('blockTo', day + 'T12:00:00+05:00');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/readyz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "readyz"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Auth (public)",
+      "item": [
+        {
+          "name": "Register - player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a normal USER account. The 6-digit code is e-mailed (dev: MailHog http://localhost:58025).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"password\": \"{{playerPassword}}\",\n  \"fullName\": \"Test Player\",\n  \"phone\": \"+923001112233\",\n  \"signupIntent\": \"USER\",\n  \"whatsappConsent\": {\n    \"optIn\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Register - ground owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "signupIntent GROUND_OWNER gives the ground-owner role, which is required to create venues.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newOwnerEmail}}\",\n  \"password\": \"{{newOwnerPassword}}\",\n  \"fullName\": \"Test Owner\",\n  \"signupIntent\": \"GROUND_OWNER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Verify email - player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "description": "Put the e-mailed code in the otpCode variable first. Saves playerToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('playerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('playerUserId', j.data.user.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify email - new owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "description": "Saves ownerToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newOwnerEmail}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('ownerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('ownerUserId', j.data.user.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"password\": \"{{playerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('playerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('playerUserId', j.data.user.id); }",
+                  "else if (j.mfaRequired) { console.log('A login code was e-mailed (MailHog http://localhost:58025). Put it in the otpCode variable and run Verify Login OTP.'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - owner (seeded demo owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Venue staff and admins get a code by e-mail. Then run 'Verify login OTP - owner'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('ownerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('ownerUserId', j.data.user.id); }",
+                  "else if (j.mfaRequired) { console.log('A login code was e-mailed (MailHog http://localhost:58025). Put it in the otpCode variable and run Verify Login OTP.'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify login OTP - owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login",
+                "verify-otp"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('ownerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('ownerUserId', j.data.user.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('adminToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('adminUserId', j.data.user.id); }",
+                  "else if (j.mfaRequired) { console.log('A login code was e-mailed (MailHog http://localhost:58025). Put it in the otpCode variable and run Verify Login OTP.'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify login OTP - admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login",
+                "verify-otp"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('adminToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('adminUserId', j.data.user.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request OTP (passwordless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/otp/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "otp",
+                "request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (passwordless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "otp",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('playerToken', j.accessToken); if (j.data && j.data.user) pm.collectionVariables.set('playerUserId', j.data.user.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/password/forgot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "password",
+                "forgot"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/password/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "password",
+                "reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"code\": \"{{otpCode}}\",\n  \"newPassword\": \"{{playerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Refresh access token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Uses the refreshToken cookie set at login (Postman keeps cookies automatically). Saves a new token into playerToken - rename the variable if you refresh another user.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) { pm.collectionVariables.set('playerToken', j.accessToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "logout"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Accept staff invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/staff-invitations/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "staff-invitations",
+                "accept"
+              ]
+            },
+            "description": "Token comes from the invitation e-mail (MailHog). Existing accounts only need the token (and must be logged in with the invited e-mail).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{inviteToken}}\",\n  \"fullName\": \"Front Desk One\",\n  \"password\": \"Staff@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 My account (player)",
+      "item": [
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.user && j.data.user.id; if (v) pm.collectionVariables.set('playerUserId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "phone is optional too: {\"phone\": \"+923001112233\"}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Test Player Updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "WhatsApp consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/whatsapp-consent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "whatsapp-consent"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"OPT_IN\",\n  \"textVersion\": \"v1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Start e-mail change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/email-change",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "email-change"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"player1.new@gmail.com\",\n  \"password\": \"{{playerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Confirm e-mail change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/email-change/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "email-change",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"player1.new@gmail.com\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "My sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "sessions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Log out everywhere",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/logout-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "logout-all"
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{playerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "03 Discovery (public)",
+      "item": [
+        {
+          "name": "Search venues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/search?lat=24.8607&lng=67.0011&radiusKm=20&sort=distance&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "24.8607"
+                },
+                {
+                  "key": "lng",
+                  "value": "67.0011"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "20"
+                },
+                {
+                  "key": "city",
+                  "value": "Karachi",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "sport",
+                  "value": "FUTSAL_5V5",
+                  "disabled": true
+                },
+                {
+                  "key": "surface",
+                  "value": "SYNTHETIC_TURF",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "distance"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Needs seeded data (npm run db:seed). Fills venueId / venueSlug if they are still empty. The seeded venues all belong to the demo owner, so this works with the demo owner's POS calls.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const a = (d => Array.isArray(d) ? d : (d && (d.items || d.venues || d.results || d.bookings || d.slots)) || [])(j.data); if (a.length) { if (!pm.collectionVariables.get('venueId')) { pm.collectionVariables.set('venueId', a[0].id); } if (!pm.collectionVariables.get('venueSlug')) { pm.collectionVariables.set('venueSlug', a[0].slug || a[0].id); } } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venue page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/{{venueSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "{{venueSlug}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "List areas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/areas?city=Karachi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Karachi"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const a = (d => Array.isArray(d) ? d : (d && (d.items || d.venues || d.results || d.bookings || d.slots)) || [])(j.data); if (a.length) pm.collectionVariables.set('areaId', a[0].id); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/meta/filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "meta",
+                "filters"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Availability grid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/{{venueSlug}}/availability?date={{tomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "{{venueSlug}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                },
+                {
+                  "key": "courtId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public slot grid with ETag. (For the booking flow use '0c. Availability grid' in the Bookings folder.)",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "View booking invite",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/invites/{{inviteToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "invites",
+                "{{inviteToken}}"
+              ]
+            },
+            "description": "inviteToken is saved by 'Create invite link' in the 06 Bookings folder.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "RSVP to invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/invites/{{inviteToken}}/rsvp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "invites",
+                "{{inviteToken}}",
+                "rsvp"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali\",\n  \"phone\": \"+923001234567\",\n  \"status\": \"GOING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Venue setup (ground owner)",
+      "item": [
+        {
+          "name": "My venues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/venues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "venues"
+              ]
+            },
+            "description": "Saves your first VERIFIED venue (else the first one) as venueId / venueSlug. These are used by the POS, booking and admin-grid calls, so run it after logging in as the owner."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const a = (d => Array.isArray(d) ? d : (d && (d.items || d.venues || d.results || d.bookings || d.slots)) || [])(j.data); const v = a.find(x => x.verificationStatus === 'VERIFIED') || a[0]; if (v) { pm.collectionVariables.set('venueId', v.id); pm.collectionVariables.set('venueSlug', v.slug || v.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create venue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/venues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "venues"
+              ]
+            },
+            "description": "Needs the GROUND_OWNER role (register with signupIntent GROUND_OWNER, or log in as the seeded demo owner). A normal user gets 403 PERMISSION_DENIED. areaId is optional: add it later with 'Update venue'. Saves newVenueId, which the rest of this folder and the admin review use.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Futsal Arena\",\n  \"city\": \"Karachi\",\n  \"address\": \"Street 5, DHA Phase 6\",\n  \"lat\": 24.8138,\n  \"lng\": 67.064,\n  \"amenities\": [\n    \"PARKING\",\n    \"FLOODLIGHTS\"\n  ],\n  \"contactPhone\": \"+923001234567\",\n  \"cancellationCutoffHours\": 12,\n  \"operatingHours\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('newVenueId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get venue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update venue (contact, area, hours)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}"
+              ]
+            },
+            "description": "Any create-venue field can be changed while the venue is a draft. To add an area later, add \"areaId\": \"{{areaId}}\" to the body (areaId is saved by 'List areas' in Discovery). Area is optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactEmail\": \"arena@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Add court (details, schedule, prices)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/courts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "courts"
+              ]
+            },
+            "description": "One call creates the court with its images, its own weekly opening hours (schedule; leave it out to use the venue's hours) and its price bands (pricing; leave it out to add bands later). environment is INDOOR or OUTDOOR (required); sport and surface are required; images: up to 10 URLs; isBookable false hides the court from players. If a price band is invalid nothing is created. priceMinor is in paisa. Repeat this request for every court of the ground (futsal, padel, cricket nets...).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Padel Court 1\",\n  \"sport\": \"PADEL\",\n  \"surface\": \"GLASS_PADEL\",\n  \"environment\": \"INDOOR\",\n  \"capacity\": 4,\n  \"slotMinutes\": 60,\n  \"isBookable\": true,\n  \"images\": [\n    \"https://example.com/court1-a.jpg\",\n    \"https://example.com/court1-b.jpg\"\n  ],\n  \"schedule\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  },\n  \"pricing\": [\n    {\n      \"name\": \"Day\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"09:00\",\n      \"toTime\": \"18:00\",\n      \"priceMinor\": 200000,\n      \"tag\": \"OFF_PEAK\"\n    },\n    {\n      \"name\": \"Evening\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"18:00\",\n      \"toTime\": \"23:00\",\n      \"priceMinor\": 300000,\n      \"tag\": \"PEAK\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('newCourtId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List courts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/courts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "courts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update court (on/off, images, hours)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/courts/{{newCourtId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "courts",
+                "{{newCourtId}}"
+              ]
+            },
+            "description": "Any court field can be changed. isBookable false switches the court off. \"schedule\": null makes the court follow the venue hours again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Padel Court 1 (renamed)\",\n  \"isBookable\": true,\n  \"environment\": \"INDOOR\",\n  \"images\": [\n    \"https://example.com/court1-new.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List pricing rules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/pricing-rules?courtId={{newCourtId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "pricing-rules"
+              ],
+              "query": [
+                {
+                  "key": "courtId",
+                  "value": "{{newCourtId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pricing preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/pricing-preview?courtId={{newCourtId}}&date={{tomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "pricing-preview"
+              ],
+              "query": [
+                {
+                  "key": "courtId",
+                  "value": "{{newCourtId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                }
+              ]
+            },
+            "description": "Shows what each slot of the day will cost."
+          }
+        },
+        {
+          "name": "Add pricing rule - weekend (extra)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/pricing-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "pricing-rules"
+              ]
+            },
+            "description": "Adds one more band to an existing court (a higher priority wins where bands overlap). Used here to demonstrate deleting a rule (next request).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{newCourtId}}\",\n  \"name\": \"Weekend special\",\n  \"dayType\": \"WEEKEND\",\n  \"fromTime\": \"09:00\",\n  \"toTime\": \"23:00\",\n  \"priceMinor\": 400000,\n  \"tag\": \"PEAK\",\n  \"priority\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('ruleId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete pricing rule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/pricing-rules/{{ruleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "pricing-rules",
+                "{{ruleId}}"
+              ]
+            },
+            "description": "Deletes the extra weekend rule saved above. Rules can only be changed while the venue is a draft."
+          }
+        },
+        {
+          "name": "Submit for review",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "submit"
+              ]
+            },
+            "description": "Needs a court, pricing that covers the opening hours and a map pin. The admin then reviews it (Admin folder)."
+          }
+        },
+        {
+          "name": "Verification status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "verification"
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ownerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "05 Venue staff (ground owner)",
+      "item": [
+        {
+          "name": "List staff",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "staff"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = (d => Array.isArray(d) ? d : (d && (d.items || d.staff)) || [])(j.data).filter(x => x.role !== 'OWNER').map(x => x.membershipId || x.id).find(Boolean); if (v) pm.collectionVariables.set('membershipId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invite staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/staff/invitations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "staff",
+                "invitations"
+              ]
+            },
+            "description": "role: MANAGER, FRONT_DESK or SCORER. The invitation token arrives by e-mail (MailHog); paste it into inviteToken and run 'Accept staff invitation'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{staffEmail}}\",\n  \"role\": \"FRONT_DESK\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Remove staff member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/staff/{{membershipId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "staff",
+                "{{membershipId}}"
+              ]
+            },
+            "description": "membershipId is saved by 'List staff' (the first non-owner member). The owner cannot be removed."
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ownerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "06 Bookings (player)",
+      "item": [
+        {
+          "name": "0a. (Owner) Pick my venue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/venues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "venues"
+              ]
+            },
+            "description": "Runs with the OWNER token. Saves the venue the player will book at, so the POS (check-in) belongs to the same venue.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const a = (d => Array.isArray(d) ? d : (d && (d.items || d.venues || d.results || d.bookings || d.slots)) || [])(j.data); const v = a.find(x => x.verificationStatus === 'VERIFIED') || a[0]; if (v) { pm.collectionVariables.set('venueId', v.id); pm.collectionVariables.set('venueSlug', v.slug || v.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0b. (Owner) Enable pay-at-venue",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/booking-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "booking-settings"
+              ]
+            },
+            "description": "Runs with the OWNER token. Needed once so the player can 'confirm pay at venue'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payAtVenueEnabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "0c. Availability grid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/{{venueSlug}}/availability?date={{tomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "{{venueSlug}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                },
+                {
+                  "key": "courtId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Saves a free slotId + courtId and, if the next hour is free too, slotId2 (the hold uses both).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const s = (j.data && j.data.slots || []).filter(x => x.status === 'AVAILABLE');",
+                  "pm.collectionVariables.set('slotId', ''); pm.collectionVariables.set('slotId2', '');",
+                  "if (s.length) { pm.collectionVariables.set('slotId', s[0].id); pm.collectionVariables.set('courtId', s[0].courtId);",
+                  "const next = s.find(x => x.courtId === s[0].courtId && new Date(x.startAt).getTime() === new Date(s[0].endAt).getTime());",
+                  "if (next) pm.collectionVariables.set('slotId2', next.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1. Hold slots",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "holds"
+              ]
+            },
+            "description": "Run steps 0a-0c first. Holds the slots for about 5 minutes (1 to 4 consecutive slots on one court). If slotId2 is empty, delete it from the body and hold one slot.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{courtId}}\",\n  \"slotIds\": [\n    \"{{slotId}}\",\n    \"{{slotId2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('bookingId', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.ref; if (v) pm.collectionVariables.set('bookingRef', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Confirm - pay at venue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/confirm-pay-at-venue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "confirm-pay-at-venue"
+              ]
+            },
+            "description": "Needs steps 0a-0c first, and must happen while the hold is still alive."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.items && j.data.items[0] && j.data.items[0].id; if (v) pm.collectionVariables.set('itemId', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.items && j.data.items[1] && j.data.items[1].id; if (v) pm.collectionVariables.set('itemId2', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/bookings?tab=upcoming&limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "upcoming"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.items && j.data.items[0] && j.data.items[0].id; if (v) pm.collectionVariables.set('itemId', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.items && j.data.items[1] && j.data.items[1].id; if (v) pm.collectionVariables.set('itemId2', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QR pass",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/pass",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "pass"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.token; if (v) pm.collectionVariables.set('passToken', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create invite link",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "invites"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.token; if (v) pm.collectionVariables.set('inviteToken', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('inviteId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List invites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "invites"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Revoke invite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/invites/{{inviteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "invites",
+                "{{inviteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set headcount",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/headcount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "headcount"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"headcount\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancel preview (last hour only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancel-preview?itemIds={{itemId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "cancel-preview"
+              ],
+              "query": [
+                {
+                  "key": "itemIds",
+                  "value": "{{itemId2}}"
+                }
+              ]
+            },
+            "description": "Shows what a cancel would refund or forfeit. Needs itemId2 (the booking must have 2 hours)."
+          }
+        },
+        {
+          "name": "Cancel one hour",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancels only the second hour, so the booking stays active for the POS calls. Omit itemIds to cancel everything.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemIds\": [\n    \"{{itemId2}}\"\n  ],\n  \"reason\": \"Plans changed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Release hold (alternative to confirm)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/hold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "hold"
+              ]
+            },
+            "description": "Only works while a booking is still an unconfirmed hold: start a fresh 'Hold slots' first."
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{playerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "07 Point of sale (ground owner / staff)",
+      "item": [
+        {
+          "name": "Booking settings - get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/booking-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "booking-settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Booking settings - update",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/booking-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "booking-settings"
+              ]
+            },
+            "description": "Turn on so players can 'confirm pay at venue'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payAtVenueEnabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Live grid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/grid?date={{tomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "grid"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                },
+                {
+                  "key": "courtId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Saves two free slots of this venue (posSlotId, posSlotId2) for the walk-in and manual bookings below."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const s = (j.data && j.data.slots || []).filter(x => x.status === 'AVAILABLE');",
+                  "pm.collectionVariables.set('posSlotId', ''); pm.collectionVariables.set('posSlotId2', '');",
+                  "if (s.length) { pm.collectionVariables.set('posSlotId', s[0].id); pm.collectionVariables.set('posCourtId', s[0].courtId); }",
+                  "if (s.length > 1) { pm.collectionVariables.set('posSlotId2', s[1].id); pm.collectionVariables.set('posCourtId2', s[1].courtId); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Walk-in booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/walkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "walkins"
+              ]
+            },
+            "description": "cashCollectedMinor is in paisa; leave it out to record the full price as collected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{posCourtId}}\",\n  \"slotIds\": [\n    \"{{posSlotId}}\"\n  ],\n  \"customerName\": \"Walk-in Customer\",\n  \"customerPhone\": \"+923009998877\",\n  \"cashCollectedMinor\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('posBookingId', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.ref; if (v) pm.collectionVariables.set('posBookingRef', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Manual booking (phone / WhatsApp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "manual"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{posCourtId2}}\",\n  \"slotIds\": [\n    \"{{posSlotId2}}\"\n  ],\n  \"customerName\": \"Walk-in Customer\",\n  \"customerPhone\": \"+923009998877\",\n  \"payLater\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('manualBookingId', v); } catch (e) {}",
+                  "try { const j = pm.response.json(); const v = j.data && j.data.ref; if (v) pm.collectionVariables.set('manualBookingRef', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Day list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings?date={{tomorrow}}&limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/{{posBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "{{posBookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Collect balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/{{bookingId}}/collect-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "{{bookingId}}",
+                "collect-balance"
+              ]
+            },
+            "description": "Uses the player's pay-at-venue booking from the 06 Bookings folder (bookingId). Must be less than the balance due.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountMinor\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check in - by QR token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "check-in"
+              ]
+            },
+            "description": "passToken is saved by 'QR pass' (player).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{passToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check in - by booking ref",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "check-in"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"{{bookingRef}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check in - by booking id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/{{bookingId}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "{{bookingId}}",
+                "check-in"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"{{bookingRef}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mark no-show",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/{{manualBookingId}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "{{manualBookingId}}",
+                "no-show"
+              ]
+            },
+            "description": "Only allowed after the slot start (+ grace). Expect 409 for tomorrow's slot."
+          }
+        },
+        {
+          "name": "Cancel booking (venue)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/bookings/{{posBookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "bookings",
+                "{{posBookingId}}",
+                "cancel"
+              ]
+            },
+            "description": "Manager or owner only. The Idempotency-Key must be a UUID ({{$guid}} is).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Venue closed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Block hours",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "blocks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtIds\": [\n    \"{{posCourtId}}\"\n  ],\n  \"from\": \"{{blockFrom}}\",\n  \"to\": \"{{blockTo}}\",\n  \"reason\": \"MAINTENANCE\",\n  \"note\": \"Floor repair\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unblock hours",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/blocks?courtIds={{posCourtId}}&from={{blockFrom}}&to={{blockTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "blocks"
+              ],
+              "query": [
+                {
+                  "key": "courtIds",
+                  "value": "{{posCourtId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{blockFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{blockTo}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Outage lock - preview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/outage-lock/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "outage-lock",
+                "preview"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtIds\": [\n    \"{{posCourtId}}\"\n  ],\n  \"from\": \"{{blockFrom}}\",\n  \"to\": \"{{blockTo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Outage lock - start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/outage-lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "outage-lock"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtIds\": [\n    \"{{posCourtId}}\"\n  ],\n  \"from\": \"{{blockFrom}}\",\n  \"to\": \"{{blockTo}}\",\n  \"reason\": \"RAIN\",\n  \"note\": \"Heavy rain\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('outageId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Outage locks - list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/outage-locks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "outage-locks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Outage lock - detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/outage-lock/{{outageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "outage-lock",
+                "{{outageId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Outage lock - release",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/outage-lock/{{outageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "outage-lock",
+                "{{outageId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Blocklist - list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/blocklist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "blocklist"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Blocklist - add phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/blocklist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "blocklist"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{blockedPhone}}\",\n  \"reason\": \"Repeated no-shows\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Blocklist - remove phone",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/blocklist/{{blockedPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "blocklist",
+                "{{blockedPhone}}"
+              ]
+            }
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ownerToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "08 Admin",
+      "item": [
+        {
+          "name": "Users & audit",
+          "item": [
+            {
+              "name": "List users",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users?limit=20&offset=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "Saves the first user as targetUserId. Change it before suspending someone you care about."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try { const j = pm.response.json(); const a = (d => Array.isArray(d) ? d : (d && (d.items || d.venues || d.results || d.bookings || d.slots)) || [])(j.data); if (a.length) pm.collectionVariables.set('targetUserId', a[0].id); } catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Suspend user",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/{{targetUserId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "{{targetUserId}}",
+                    "suspend"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Unsuspend user",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/{{targetUserId}}/unsuspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "{{targetUserId}}",
+                    "unsuspend"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Force logout user",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/{{targetUserId}}/force-logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "{{targetUserId}}",
+                    "force-logout"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Audit log",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/audit-logs?limit=20&offset=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "audit-logs"
+                  ],
+                  "query": [
+                    {
+                      "key": "actorId",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "entity",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "action",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venue review & areas",
+          "item": [
+            {
+              "name": "Venues to review",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues?status=SUBMITTED&limit=20&offset=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "SUBMITTED"
+                    },
+                    {
+                      "key": "city",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Venue under review",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}"
+                  ]
+                },
+                "description": "The venue created and submitted in folder 04."
+              }
+            },
+            {
+              "name": "Open review",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/open-review",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "open-review"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Decide review",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/review",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "review"
+                  ]
+                },
+                "description": "decision: APPROVED, CHANGES_REQUESTED or REJECTED (comments required unless approving). Optional fieldFlags: [{field, note}].",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"APPROVED\",\n  \"comments\": \"Looks good\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Suspend venue",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "suspend"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Safety complaint\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Reinstate venue",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/reinstate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "reinstate"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Issue resolved\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Create area",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/areas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "areas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"city\": \"Karachi\",\n  \"name\": \"Postman Area\",\n  \"aliases\": [\n    \"PA\"\n  ],\n  \"lat\": 24.86,\n  \"lng\": 67.0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('newAreaId', v); } catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update area",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/areas/{{newAreaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "areas",
+                    "{{newAreaId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Area 2\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Delete area",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/areas/{{newAreaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "areas",
+                    "{{newAreaId}}"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bookings",
+          "item": [
+            {
+              "name": "Search bookings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/bookings?limit=25&offset=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "bookings"
+                  ],
+                  "query": [
+                    {
+                      "key": "ref",
+                      "value": "{{bookingRef}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "email",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "phone",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "venueId",
+                      "value": "{{venueId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Booking detail",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/bookings/{{manualBookingId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "bookings",
+                    "{{manualBookingId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Cancel any booking",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}",
+                    "description": "8-128 chars; a fresh UUID each send (cancel calls need a UUID)"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/bookings/{{manualBookingId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "bookings",
+                    "{{manualBookingId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "The Idempotency-Key must be a UUID. Optional itemIds cancels single hours.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Admin override: duplicate booking\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Force-unblock slots",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/slots/unblock",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "slots",
+                    "unblock"
+                  ]
+                },
+                "description": "Only slots that are manually BLOCKED can be unblocked (409 INVALID_SLOT_TRANSITION otherwise).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"slotIds\": [\n    \"{{posSlotId}}\"\n  ],\n  \"reason\": \"Stuck block removed\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "All outage locks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/outage-locks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "outage-locks"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Abuse flags",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/abuse-flags",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "abuse-flags"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Booking health",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/booking-health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "booking-health"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Live grid of any venue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{venueId}}/grid?date={{tomorrow}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{venueId}}",
+                    "grid"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{tomorrow}}"
+                    },
+                    {
+                      "key": "courtId",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "09 Realtime",
+      "item": [
+        {
+          "name": "Live updates (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/realtime/stream?venueId={{venueId}}&date={{tomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "realtime",
+                "stream"
+              ],
+              "query": [
+                {
+                  "key": "venueId",
+                  "value": "{{venueId}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{tomorrow}}"
+                },
+                {
+                  "key": "pos",
+                  "value": "{{venueId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Server-sent events stream; it stays open. For staff add header Authorization: Bearer {{ownerToken}} and enable the pos parameter. Socket.IO clients connect to path /realtime.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

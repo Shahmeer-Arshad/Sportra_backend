@@ -61,7 +61,7 @@ export async function bookingRoutes(app: FastifyInstance) {
       u.post('/bookings/:id/cancel', byId({ body: S.cancelBody }), c.cancelMine)
       u.post('/bookings/:id/invites', byId(), c.createInvite)
       u.get('/bookings/:id/invites', byId(), c.listInvites)
-      u.delete('/bookings/:id/invites/:inviteId', mine(), c.revokeInvite)
+      u.delete('/bookings/:id/invites/:inviteId', byId(), c.revokeInvite)
       u.patch('/bookings/:id/headcount', byId({ body: S.headcountBody }), c.setHeadcount)
     },
     { prefix: '/api/v1' },

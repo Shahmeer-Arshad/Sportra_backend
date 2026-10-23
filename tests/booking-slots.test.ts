@@ -207,6 +207,7 @@ describe('slot generation', () => {
         name: 'Court 2',
         sport: 'PADEL',
         surface: 'GLASS_PADEL',
+        environment: 'INDOOR',
       },
     )
     expect(second.statusCode).toBe(201)

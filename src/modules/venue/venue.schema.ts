@@ -33,23 +33,6 @@ export const createVenueBody = {
 }
 export const updateVenueBody = { type: 'object', properties: venueFields }
 
-export const courtBody = {
-  type: 'object',
-  required: ['name', 'sport', 'surface'],
-  properties: {
-    name: { type: 'string', minLength: 1, maxLength: 80 },
-    sport: { type: 'string', enum: [...SPORTS] },
-    surface: { type: 'string', enum: [...SURFACES] },
-    capacity: { type: 'integer', minimum: 1, maximum: 200 },
-    slotMinutes: { type: 'integer', enum: [30, 60, 90, 120] },
-    hoursOverride: { type: 'object' },
-  },
-}
-export const courtPatchBody = {
-  type: 'object',
-  properties: { ...courtBody.properties, isActive: { type: 'boolean' } },
-}
-
 const ruleProps = {
   courtId: uuid,
   name: { type: 'string', minLength: 1, maxLength: 80 },
@@ -63,6 +46,49 @@ const ruleProps = {
   priority: { type: 'integer', minimum: 0, maximum: 100, default: 0 },
   tag: { type: 'string', enum: ['PEAK', 'OFF_PEAK'] },
 }
+const rulePropsNoCourt = Object.fromEntries(
+  Object.entries(ruleProps).filter(([key]) => key !== 'courtId'),
+)
+const courtImages = {
+  type: 'array',
+  items: { type: 'string', pattern: '^https?://\\S+$', maxLength: 500 },
+  maxItems: 10,
+  uniqueItems: true,
+}
+const courtProps = {
+  name: { type: 'string', minLength: 1, maxLength: 80 },
+  sport: { type: 'string', enum: [...SPORTS] },
+  surface: { type: 'string', enum: [...SURFACES] },
+  environment: { type: 'string', enum: ['INDOOR', 'OUTDOOR'] },
+  capacity: { type: 'integer', minimum: 1, maximum: 200 },
+  slotMinutes: { type: 'integer', enum: [30, 60, 90, 120] },
+  images: courtImages,
+  isBookable: { type: 'boolean' },
+}
+export const courtBody = {
+  type: 'object',
+  required: ['name', 'sport', 'surface', 'environment'],
+  properties: {
+    ...courtProps,
+    // the court's own weekly opening hours; leave out to use the venue's
+    schedule: { type: 'object' },
+    // price bands created together with the court (same fields as POST /pricing-rules)
+    pricing: {
+      type: 'array',
+      maxItems: 30,
+      items: {
+        type: 'object',
+        required: ['name', 'dayType', 'fromTime', 'toTime', 'priceMinor', 'tag'],
+        properties: rulePropsNoCourt,
+      },
+    },
+  },
+}
+export const courtPatchBody = {
+  type: 'object',
+  properties: { ...courtProps, schedule: { type: ['object', 'null'] } },
+}
+
 export const pricingRuleBody = {
   type: 'object',
   required: ['courtId', 'name', 'dayType', 'fromTime', 'toTime', 'priceMinor', 'tag'],

@@ -22,7 +22,10 @@ export const cancelBody = {
 }
 
 // Ajv runs with removeAdditional:'all', so every path parameter must be listed or it is stripped
-export const idParams = { type: 'object', properties: { id: uuid, venueId: uuid } }
+export const idParams = {
+  type: 'object',
+  properties: { id: uuid, venueId: uuid, inviteId: uuid },
+}
 export const bookingItemQuery = { type: 'object', properties: { itemIds: uuidList(1, 12) } }
 
 export const myBookingsQuery = {

@@ -88,6 +88,7 @@ describe('owner onboarding', () => {
         name: 'C2',
         sport: 'PADEL',
         surface: 'GLASS_PADEL',
+        environment: 'INDOOR',
         ...b,
       })
     expect((await c({})).statusCode).toBe(201)
@@ -177,6 +178,7 @@ describe('owner onboarding', () => {
       name: 'C1',
       sport: 'PADEL',
       surface: 'GLASS_PADEL',
+      environment: 'INDOOR',
     })
     const r2 = await call(app, 'POST', `${P(id)}/submit`, owner.accessToken)
     expect(r2.statusCode).toBe(400)
@@ -380,7 +382,11 @@ describe('authorization: who can touch which venue', () => {
     for (const [method, url, body] of [
       ['GET', P(va.venueId), undefined],
       ['PATCH', P(va.venueId), { name: 'Hijacked Name' }],
-      ['POST', `${P(va.venueId)}/courts`, { name: 'x', sport: 'PADEL', surface: 'GLASS_PADEL' }],
+      [
+        'POST',
+        `${P(va.venueId)}/courts`,
+        { name: 'x', sport: 'PADEL', surface: 'GLASS_PADEL', environment: 'INDOOR' },
+      ],
       ['GET', `${P(va.venueId)}/pricing-rules`, undefined],
       ['POST', `${P(va.venueId)}/submit`, undefined],
       ['GET', `${P(va.venueId)}/staff`, undefined],
@@ -665,5 +671,172 @@ describe('admin: queue, detail, areas', () => {
         })
       ).json().data.aliases,
     ).toEqual(['Alpha'])
+  })
+})
+
+describe('malformed ids', () => {
+  it('answers 400 INVALID_ID instead of 500 when an id in the path is not a UUID', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const created = await call(app, 'POST', '/api/v1/venues', owner.accessToken, {
+      name: 'Id Test Arena',
+      city: 'Testville',
+      address: '12 Test Road, Testville',
+      lat: 24.86,
+      lng: 67.0,
+      operatingHours: { mon: [{ open: '09:00', close: '11:00' }] },
+    })
+    const venueId = created.json().data.id as string
+    const staffRes = await call(app, 'DELETE', `${P(venueId)}/staff/not-a-uuid`, owner.accessToken)
+    expect(staffRes.statusCode).toBe(400)
+    expect(staffRes.json().code).toBe('INVALID_ID')
+    const adminRes = await call(app, 'GET', '/api/v1/admin/venues/not-a-uuid', adminToken)
+    expect(adminRes.statusCode).toBe(400)
+  })
+})
+
+describe('court details', () => {
+  const full = {
+    name: 'Padel Court 1',
+    sport: 'PADEL',
+    surface: 'GLASS_PADEL',
+    environment: 'INDOOR',
+    capacity: 4,
+    images: ['https://cdn.example.com/c1.jpg', 'https://cdn.example.com/c2.jpg'],
+    schedule: {
+      mon: [{ open: '09:00', close: '23:00' }],
+      tue: [{ open: '09:00', close: '23:00' }],
+    },
+    pricing: [
+      {
+        name: 'Day',
+        dayType: 'ANY',
+        fromTime: '09:00',
+        toTime: '18:00',
+        priceMinor: 200000,
+        tag: 'OFF_PEAK',
+      },
+      {
+        name: 'Evening',
+        dayType: 'ANY',
+        fromTime: '18:00',
+        toTime: '23:00',
+        priceMinor: 300000,
+        tag: 'PEAK',
+      },
+    ],
+  }
+  const courtsUrl = (venueId: string) => `${P(venueId)}/courts`
+
+  it('creates a court with images, own schedule and price bands in one call', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const v = await buildDraftVenue(app, owner)
+    const r = await call(app, 'POST', courtsUrl(v.venueId), owner.accessToken, full)
+    expect(r.statusCode).toBe(201)
+    const c = r.json().data
+    expect(c).toMatchObject({
+      environment: 'INDOOR',
+      images: full.images,
+      schedule: full.schedule,
+      isBookable: true,
+    })
+    expect(c.pricingRules).toHaveLength(2)
+    expect(c.hoursOverride).toBeUndefined()
+    expect(c.isActive).toBeUndefined()
+
+    const list = (await call(app, 'GET', courtsUrl(v.venueId), owner.accessToken)).json().data
+    expect(list.find((x: any) => x.id === c.id)).toMatchObject({
+      isBookable: true,
+      environment: 'INDOOR',
+    })
+    const rules = (
+      await call(app, 'GET', `${P(v.venueId)}/pricing-rules?courtId=${c.id}`, owner.accessToken)
+    ).json().data
+    expect(rules).toHaveLength(2)
+  })
+
+  it('a bad price band leaves no half-made court behind', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const v = await buildDraftVenue(app, owner)
+    const before = (await call(app, 'GET', courtsUrl(v.venueId), owner.accessToken)).json().data
+      .length
+    const clash = [
+      ...full.pricing,
+      {
+        name: 'Clash',
+        dayType: 'ANY',
+        fromTime: '10:00',
+        toTime: '12:00',
+        priceMinor: 1,
+        tag: 'PEAK',
+      },
+    ]
+    const r = await call(app, 'POST', courtsUrl(v.venueId), owner.accessToken, {
+      ...full,
+      pricing: clash,
+    })
+    expect(r.statusCode).toBe(409)
+    expect(r.json().code).toBe('PRICING_OVERLAP')
+    const after = (await call(app, 'GET', courtsUrl(v.venueId), owner.accessToken)).json().data
+      .length
+    expect(after).toBe(before)
+  })
+
+  it('validates environment, images and schedule', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const v = await buildDraftVenue(app, owner)
+    const post = (extra: object) =>
+      call(app, 'POST', courtsUrl(v.venueId), owner.accessToken, {
+        ...full,
+        pricing: undefined,
+        ...extra,
+      })
+    const noEnv = { ...full, environment: undefined }
+    expect(
+      (await call(app, 'POST', courtsUrl(v.venueId), owner.accessToken, noEnv)).statusCode,
+    ).toBe(400)
+    expect((await post({ environment: 'ROOFTOP' })).statusCode).toBe(400)
+    expect((await post({ images: ['not a url'] })).statusCode).toBe(400)
+    const eleven = Array.from({ length: 11 }, (_, i) => `https://cdn.example.com/${i}.jpg`)
+    expect((await post({ images: eleven })).statusCode).toBe(400)
+    expect(
+      (await post({ schedule: { funday: [{ open: '09:00', close: '10:00' }] } })).statusCode,
+    ).toBe(400)
+    expect((await post({ isBookable: false })).json().data.isBookable).toBe(false)
+  })
+
+  it('the owner can switch a court off and on, change images, and go back to the venue hours', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const v = await buildDraftVenue(app, owner)
+    const patch = (body: object) =>
+      call(app, 'PATCH', `${courtsUrl(v.venueId)}/${v.courtId}`, owner.accessToken, body)
+    expect((await patch({ isBookable: false })).json().data.isBookable).toBe(false)
+    expect((await patch({ isBookable: true, environment: 'INDOOR' })).json().data).toMatchObject({
+      isBookable: true,
+      environment: 'INDOOR',
+    })
+    expect(
+      (await patch({ images: ['https://cdn.example.com/new.jpg'] })).json().data.images,
+    ).toEqual(['https://cdn.example.com/new.jpg'])
+    expect((await patch({ schedule: full.schedule })).json().data.schedule).toEqual(full.schedule)
+    expect((await patch({ schedule: null })).json().data.schedule).toBeNull()
+  })
+
+  it('the public venue page shows environment and images', async () => {
+    const owner = await signupVerified(app, { groundOwner: true })
+    const v = await buildDraftVenue(app, owner)
+    await call(app, 'PATCH', `${courtsUrl(v.venueId)}/${v.courtId}`, owner.accessToken, {
+      environment: 'INDOOR',
+      images: ['https://cdn.example.com/pub.jpg'],
+    })
+    await call(app, 'POST', `${P(v.venueId)}/submit`, owner.accessToken)
+    await call(app, 'POST', `/api/v1/admin/venues/${v.venueId}/open-review`, adminToken)
+    await call(app, 'POST', `/api/v1/admin/venues/${v.venueId}/review`, adminToken, {
+      decision: 'APPROVED',
+    })
+    const page = (await call(app, 'GET', `/api/v1/public/venues/${v.venueId}`)).json().data
+    expect(page.courts[0]).toMatchObject({
+      environment: 'INDOOR',
+      images: ['https://cdn.example.com/pub.jpg'],
+    })
   })
 })

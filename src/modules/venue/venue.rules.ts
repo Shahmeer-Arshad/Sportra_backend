@@ -1,10 +1,12 @@
 import { Court, PricingRule, Venue } from '@prisma/client'
 import { BadRequestError, ConflictError, ForbiddenError } from '../../utils/errors'
 import {
+  findPriceOverlap,
   findPricingGap,
   nextStatus,
   OperatingHours,
   OWNER_EDITABLE,
+  PriceRule,
   validateHours,
   VenueAction,
 } from './venue.domain'
@@ -71,6 +73,31 @@ export function assertRuleShape(input: any) {
   } else if (input.startDate || input.endDate) {
     throw new BadRequestError('Dates are only allowed for DATE_RANGE rules', 'INVALID_PRICING_RULE')
   }
+}
+
+/**
+ * Checks price bands that are created together with a court (shape, and no overlap between them)
+ * and returns them ready to insert. Same rules as adding the bands one by one.
+ */
+export function planPricingRules(list: any[]) {
+  const accepted: PriceRule[] = []
+  return list.map((input) => {
+    assertRuleShape(input)
+    const rule: PriceRule = {
+      dayType: input.dayType,
+      startDate: input.startDate ?? null,
+      endDate: input.endDate ?? null,
+      fromTime: input.fromTime,
+      toTime: input.toTime,
+      priceMinor: BigInt(input.priceMinor),
+      priority: input.priority ?? 0,
+      tag: input.tag,
+    }
+    const overlap = findPriceOverlap(accepted, rule)
+    if (overlap) throw new ConflictError(overlap, 'PRICING_OVERLAP')
+    accepted.push(rule)
+    return { ...rule, name: input.name as string }
+  })
 }
 
 /** What stops a venue from being submitted (empty = ready). */

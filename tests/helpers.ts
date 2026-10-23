@@ -198,6 +198,7 @@ export async function buildDraftVenue(
     name: 'Court 1',
     sport: o.sport ?? 'FUTSAL_5V5',
     surface: o.surface ?? 'SYNTHETIC_TURF',
+    environment: 'INDOOR',
   })
   if (court.statusCode !== 201) throw new Error('add court failed: ' + court.body)
   const courtId = court.json().data.id as string
@@ -494,6 +495,7 @@ export async function addCourt(
       name,
       sport: 'FUTSAL_5V5',
       surface: 'SYNTHETIC_TURF',
+      environment: 'INDOOR',
     },
   )
   if (res.statusCode !== 201) throw new Error('add court failed: ' + res.body)

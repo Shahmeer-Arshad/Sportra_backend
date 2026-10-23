@@ -3,7 +3,14 @@ import { BadRequestError, ConflictError, NotFoundError } from '../../utils/error
 import { slugify } from './venue.rules'
 import { VenueQueries } from './venue.repository'
 import { SearchParams } from './venue.search'
-import { buildPricingPreview, publicVenueJson, ruleJson, toRule, venueJson } from './venue.view'
+import {
+  buildPricingPreview,
+  courtJson,
+  publicVenueJson,
+  ruleJson,
+  toRule,
+  venueJson,
+} from './venue.view'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -28,7 +35,7 @@ export function createVenueService(repo: VenueQueries) {
     const courts = await repo.courtsWithRules(venueId)
     return {
       ...venueJson(v),
-      courts: courts.map((c) => ({ ...c, pricingRules: c.pricingRules.map(ruleJson) })),
+      courts: courts.map((c) => ({ ...courtJson(c), pricingRules: c.pricingRules.map(ruleJson) })),
     }
   }
 
@@ -57,7 +64,7 @@ export function createVenueService(repo: VenueQueries) {
       }
     },
 
-    listCourts: (venueId: string) => repo.courtsOf(venueId),
+    listCourts: async (venueId: string) => (await repo.courtsOf(venueId)).map(courtJson),
 
     async listPricingRules(venueId: string, courtId?: string) {
       return (await repo.rulesOfVenue(venueId, courtId)).map(ruleJson)

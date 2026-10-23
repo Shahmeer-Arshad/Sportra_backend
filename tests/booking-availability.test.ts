@@ -199,7 +199,7 @@ describe('public availability grid', () => {
       'PATCH',
       `/api/v1/pos/venues/${f.venueId}/courts/${second}`,
       f.owner.accessToken,
-      { isActive: false },
+      { isBookable: false },
     )
     expect(off.statusCode).toBe(200)
     await app.booking.idle()

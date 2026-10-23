@@ -25,6 +25,12 @@ export const toRule = (r: PricingRule): PriceRule => ({
 export const ruleJson = (r: PricingRule) => ({ ...r, priceMinor: Number(r.priceMinor) })
 export const venueJson = (v: Venue) => ({ ...v, location: undefined })
 
+/** A court as the API shows it: `schedule` is its own opening hours, `isBookable` the on/off switch. */
+export const courtJson = <C extends Court>(c: C) => {
+  const { hoursOverride, isActive, ...rest } = c
+  return { ...rest, schedule: hoursOverride, isBookable: isActive }
+}
+
 const fmt = (m: number) =>
   `${String(Math.floor((m % 1440) / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 
@@ -77,6 +83,8 @@ export const publicVenueJson = (
     name: c.name,
     sport: c.sport,
     surface: c.surface,
+    environment: c.environment,
+    images: c.images,
     capacity: c.capacity,
     slotMinutes: c.slotMinutes,
     priceBands: c.pricingRules.map((r) => {

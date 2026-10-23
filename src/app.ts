@@ -114,6 +114,16 @@ export async function buildApp(): Promise<FastifyInstance> {
       })
     }
 
+    // A malformed id in the path (not a UUID) reaches the database as a cast error: answer 400, not 500
+    if (err.code === 'P2023' || /invalid input syntax for type uuid/.test(String(err.message))) {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'INVALID_ID',
+        message: 'An id in the request is not a valid UUID',
+      })
+    }
+
     // JWT errors
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return reply.status(401).send({

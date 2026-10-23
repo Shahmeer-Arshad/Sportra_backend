@@ -196,6 +196,8 @@ model Court {
   name          String
   sport         String
   surface       String
+  environment   String        @default("OUTDOOR") // INDOOR | OUTDOOR
+  images        String[]      @default([])
   capacity      Int?
   slotMinutes   Int           @default(60) @map("slot_minutes")
   hoursOverride Json?         @map("hours_override") @db.JsonB

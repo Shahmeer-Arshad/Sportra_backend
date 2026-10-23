@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { readFileSync } from 'fs'
 import { PrismaClient } from '@prisma/client'
 import { diagnosticsChannel } from './rbac.helpers'
 import { uuidv7 } from '../src/lib/id'
@@ -78,6 +79,21 @@ describe('every API route has a permission, and the other way round', () => {
     const real = seen.filter((r) => !/\/docs|\/\*|^(HEAD|OPTIONS) /.test(r))
     expect(real.filter((r) => !unique.has(r)).sort()).toEqual([]) // route without a permission row
     expect([...unique].filter((r) => !real.includes(r)).sort()).toEqual([]) // row without a route
+  })
+
+  it('the Postman collection has a request for every route', () => {
+    const norm = (p: string) => p.replace(/(:\w+|\{\{\w+\}\})/g, ':p')
+    const col = JSON.parse(readFileSync('postman/Sportra.postman_collection.json', 'utf8'))
+    const found = new Set<string>()
+    const walk = (items: any[]) =>
+      items.forEach((it) => {
+        if (it.item) return walk(it.item)
+        found.add(`${it.request.method} ${norm('/' + it.request.url.path.join('/'))}`)
+      })
+    walk(col.item)
+    const expected = new Set(API_MAP.map(([m, path]) => `${m} ${norm(path)}`))
+    expect([...expected].filter((r) => !found.has(r)).sort()).toEqual([])
+    expect([...found].filter((r) => !expected.has(r)).sort()).toEqual([])
   })
 
   it('PUBLIC rows are the only rows without a permission', () => {
