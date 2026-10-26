@@ -11,6 +11,7 @@ import securityPlugin from './plugins/security'
 import swaggerPlugin from './plugins/swagger'
 import redisPlugin from './plugins/redis'
 import mailerPlugin from './plugins/mailer'
+import cloudinaryPlugin from './plugins/cloudinary'
 import hotLanePlugin from './plugins/hotlane'
 import bookingPlugin from './plugins/booking'
 import realtimePlugin from './plugins/realtime'
@@ -21,6 +22,7 @@ import { identityRoutes } from './modules/identity/identity.routes'
 import { venueRoutes } from './modules/venue/venue.routes'
 import { bookingRoutes } from './modules/booking/booking.routes'
 import { healthRoutes } from './modules/health/health.routes'
+import { mediaRoutes } from './modules/media/media.routes'
 
 /**
  * Builds and configures the Fastify application.
@@ -74,6 +76,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(prismaPlugin)
   await app.register(redisPlugin)
   await app.register(mailerPlugin)
+  await app.register(cloudinaryPlugin)
   await app.register(fastifyCookie)
   await app.register(jwtPlugin)
   await app.register(hotLanePlugin)
@@ -191,6 +194,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.register(identityRoutes)
   app.register(venueRoutes)
   app.register(bookingRoutes)
+  app.register(mediaRoutes)
 
   return app
 }

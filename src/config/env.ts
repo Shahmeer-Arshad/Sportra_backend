@@ -41,6 +41,12 @@ const envSchema = z.object({
   MAX_UNPAID_BOOKINGS: z.coerce.number().int().min(1).default(1),
   NO_SHOW_AFTER_MINUTES: z.coerce.number().int().min(1).default(20),
   SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(60),
+  // Photo uploads (Cloudinary). Leave the three credentials empty to switch uploads off (503).
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().default('sportra'),
+  UPLOAD_MAX_MB: z.coerce.number().min(0.1).max(20).default(5),
   // Signs QR entry passes. Falls back to a value derived from ACCESS_TOKEN_SECRET when unset.
   QR_PASS_SECRET: z.string().min(16).optional(),
 })

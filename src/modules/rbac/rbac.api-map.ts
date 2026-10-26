@@ -76,6 +76,7 @@ export const API_MAP: readonly Row[] = [
   ['GET', `${V}`, 'venue.read', 'See venue details'],
   ['PATCH', `${V}`, 'venue.update', 'Edit venue details'],
   ['POST', `${V}/submit`, 'venue.submit', 'Submit venue for review'],
+  ['POST', `${V}/uploads`, 'venue.update', 'Upload a photo (returns its link)'],
   ['GET', `${V}/verification`, 'venue.verification_read', 'See verification status'],
   ['GET', `${V}/courts`, 'court.read', 'List courts'],
   ['POST', `${V}/courts`, 'court.create', 'Add a court'],

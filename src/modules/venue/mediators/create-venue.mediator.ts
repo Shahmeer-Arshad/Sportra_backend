@@ -23,6 +23,7 @@ export const createVenueMediator =
         lat: input.lat,
         lng: input.lng,
         amenities: input.amenities ?? [],
+        photos: input.photos ?? [],
         whatsappNumber: input.whatsappNumber ?? null,
         contactPhone: input.contactPhone ?? null,
         contactEmail: input.contactEmail?.toLowerCase() ?? null,

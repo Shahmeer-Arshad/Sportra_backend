@@ -16,6 +16,7 @@ const MATERIAL_FIELDS = ['lat', 'lng', 'address', 'cancellationCutoffHours', 'ci
 const MANAGER_EDITABLE = [
   'operatingHours',
   'amenities',
+  'photos',
   'whatsappNumber',
   'contactPhone',
   'contactEmail',

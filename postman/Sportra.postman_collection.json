@@ -208,6 +208,14 @@
     {
       "key": "blockTo",
       "value": ""
+    },
+    {
+      "key": "photoUrl",
+      "value": ""
+    },
+    {
+      "key": "courtPhotoUrl",
+      "value": ""
     }
   ],
   "event": [
@@ -1590,12 +1598,110 @@
             "description": "Any create-venue field can be changed while the venue is a draft. To add an area later, add \"areaId\": \"{{areaId}}\" to the body (areaId is saved by 'List areas' in Discovery). Area is optional.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contactEmail\": \"arena@gmail.com\"\n}",
+              "raw": "{\n  \"contactEmail\": \"arena@gmail.com\",\n  \"photos\": [\"{{photoUrl}}\"]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "Upload venue photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); if (j.data && j.data.url) { pm.collectionVariables.set('photoUrl', j.data.url); } } catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/uploads?kind=venue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "uploads"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "venue"
+                }
+              ]
+            },
+            "description": "Body > form-data, key 'file' (type File): pick a JPEG, PNG or WebP up to 5 MB. Cloudinary stores it and the response returns data.url. This call only stores the file; save the link in our database by sending it in 'Update venue' as \"photos\": [\"{{photoUrl}}\"]. Needs OWNER or MANAGER of the venue. The link is saved as photoUrl.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload court photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); if (j.data && j.data.url) { pm.collectionVariables.set('courtPhotoUrl', j.data.url); } } catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/uploads?kind=court",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "uploads"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "court"
+                }
+              ]
+            },
+            "description": "Same as 'Upload venue photo' but stored in the court folder. Save the returned link with 'Add court' or 'Update court' in the court's \"images\" list, e.g. \"images\": [\"{{courtPhotoUrl}}\"]. The link is saved as courtPhotoUrl.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
             }
           }
         },

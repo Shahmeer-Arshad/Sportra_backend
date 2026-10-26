@@ -10,6 +10,13 @@ const amenities = {
   uniqueItems: true,
 }
 
+const photoUrls = {
+  type: 'array',
+  items: { type: 'string', pattern: '^https://\\S+$', maxLength: 500 },
+  maxItems: 10,
+  uniqueItems: true,
+}
+
 const venueFields = {
   name: { type: 'string', minLength: 3, maxLength: 120 },
   city: { type: 'string', minLength: 2, maxLength: 60 },
@@ -18,6 +25,7 @@ const venueFields = {
   lat: { type: 'number', minimum: -90, maximum: 90 },
   lng: { type: 'number', minimum: -180, maximum: 180 },
   amenities,
+  photos: photoUrls,
   whatsappNumber: phone,
   contactPhone: phone,
   contactEmail: { type: 'string', format: 'email' },

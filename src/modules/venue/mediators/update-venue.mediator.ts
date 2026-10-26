@@ -20,6 +20,7 @@ export const updateVenueMediator =
         ...(input.lat !== undefined && { lat: input.lat }),
         ...(input.lng !== undefined && { lng: input.lng }),
         ...(input.amenities && { amenities: input.amenities }),
+        ...(input.photos && { photos: input.photos }),
         ...(input.whatsappNumber && { whatsappNumber: input.whatsappNumber }),
         ...(input.contactPhone && { contactPhone: input.contactPhone }),
         ...(input.contactEmail && { contactEmail: input.contactEmail.toLowerCase() }),
