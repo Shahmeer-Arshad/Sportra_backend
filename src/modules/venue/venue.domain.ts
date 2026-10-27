@@ -230,6 +230,7 @@ const TRANSITIONS: Record<string, VenueStatus[]> = {
   reject: ['UNDER_REVIEW'],
   suspend: ['VERIFIED'],
   reinstate: ['SUSPENDED'],
+  release_review: ['UNDER_REVIEW'],
 }
 const RESULT: Record<string, VenueStatus> = {
   submit: 'SUBMITTED',
@@ -239,8 +240,13 @@ const RESULT: Record<string, VenueStatus> = {
   reject: 'REJECTED',
   suspend: 'SUSPENDED',
   reinstate: 'VERIFIED',
+  release_review: 'SUBMITTED',
 }
 export type VenueAction = keyof typeof TRANSITIONS
+
+/** PAUSE_ONLINE: players cannot book, the venue's own POS keeps working. STOP_ALL: everything stops. */
+export const SUSPENSION_MODES = ['PAUSE_ONLINE', 'STOP_ALL'] as const
+export type SuspensionMode = (typeof SUSPENSION_MODES)[number]
 
 export function nextStatus(from: string, action: VenueAction): VenueStatus | null {
   return TRANSITIONS[action].includes(from as VenueStatus) ? RESULT[action] : null

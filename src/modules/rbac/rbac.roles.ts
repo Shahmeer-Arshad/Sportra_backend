@@ -36,6 +36,8 @@ export const ROLES = {
       'venue.update',
       'venue.submit',
       'venue.verification_read',
+      'venue.copy',
+      'venue_change.*',
       'court.*',
       'pricing.*',
       'staff.*',

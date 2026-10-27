@@ -9,6 +9,7 @@ import { addDays, todayIn } from '../src/lib/time'
 
 export const TEST_DOMAIN = '@t.sportra.test'
 export const PASSWORD = 'Passw0rdTest1'
+export const PHOTO = 'https://res.cloudinary.com/test/image/upload/sample.jpg'
 
 let ipCounter = 1
 /** Every request gets its own fake IP so the per-IP rate limit never interferes with a test. */
@@ -145,6 +146,8 @@ export async function cleanupTestData(prisma: PrismaClient) {
   await prisma.$executeRaw`DELETE FROM venue_blocklist WHERE venue_id IN (${venueIds})`
   await prisma.$executeRaw`DELETE FROM idempotency_keys WHERE split_part(scope, ':', 2) IN (SELECT id::text FROM users WHERE email LIKE ${like} UNION SELECT id::text FROM venues WHERE id IN (${venueIds}))`
   await prisma.$executeRaw`DELETE FROM venue_reviews WHERE venue_id IN (${venueIds})`
+  await prisma.$executeRaw`DELETE FROM venue_submissions WHERE venue_id IN (${venueIds})`
+  await prisma.$executeRaw`DELETE FROM venue_change_requests WHERE venue_id IN (${venueIds})`
   await prisma.$executeRaw`DELETE FROM pricing_rules WHERE court_id IN (SELECT id FROM courts WHERE venue_id IN (${venueIds}))`
   await prisma.$executeRaw`DELETE FROM courts WHERE venue_id IN (${venueIds})`
   await prisma.$executeRaw`DELETE FROM venues WHERE id IN (${venueIds})`
@@ -189,6 +192,7 @@ export async function buildDraftVenue(
     lat: o.lat ?? 24.8607,
     lng: o.lng ?? 67.0011,
     amenities: o.amenities ?? ['PARKING'],
+    photos: [PHOTO],
     operatingHours: hours(),
     ...(o.areaId && { areaId: o.areaId }),
   })
@@ -199,6 +203,7 @@ export async function buildDraftVenue(
     sport: o.sport ?? 'FUTSAL_5V5',
     surface: o.surface ?? 'SYNTHETIC_TURF',
     environment: 'INDOOR',
+    images: [PHOTO],
   })
   if (court.statusCode !== 201) throw new Error('add court failed: ' + court.body)
   const courtId = court.json().data.id as string
@@ -486,33 +491,52 @@ export async function addCourt(
   name = 'Extra Court',
   wait = true,
 ) {
-  const res = await call(
-    app,
-    'POST',
-    `/api/v1/pos/venues/${f.venueId}/courts`,
-    f.owner.accessToken,
-    {
-      name,
-      sport: 'FUTSAL_5V5',
-      surface: 'SYNTHETIC_TURF',
-      environment: 'INDOOR',
-    },
-  )
-  if (res.statusCode !== 201) throw new Error('add court failed: ' + res.body)
-  const courtId = res.json().data.id as string
+  const res = await ownerEdit(app, f, 'POST', `/api/v1/pos/venues/${f.venueId}/courts`, {
+    name,
+    sport: 'FUTSAL_5V5',
+    surface: 'SYNTHETIC_TURF',
+    environment: 'INDOOR',
+    images: [PHOTO],
+  })
+  if (res.statusCode !== 201) throw new Error('add court failed: ' + JSON.stringify(res.data))
+  const courtId = res.data.id as string
   for (const r of [
     { name: 'Day', fromTime: '06:00', toTime: '18:00', priceMinor: 200000, tag: 'OFF_PEAK' },
     { name: 'Evening', fromTime: '18:00', toTime: '02:00', priceMinor: 300000, tag: 'PEAK' },
   ]) {
-    const p = await call(
-      app,
-      'POST',
-      `/api/v1/pos/venues/${f.venueId}/pricing-rules`,
-      f.owner.accessToken,
-      { courtId, dayType: 'ANY', ...r },
-    )
-    if (p.statusCode !== 201) throw new Error('add rule failed: ' + p.body)
+    const p = await ownerEdit(app, f, 'POST', `/api/v1/pos/venues/${f.venueId}/pricing-rules`, {
+      courtId,
+      dayType: 'ANY',
+      ...r,
+    })
+    if (p.statusCode !== 201) throw new Error('add rule failed: ' + JSON.stringify(p.data))
   }
   if (wait) await app.booking.idle()
   return courtId
+}
+
+/**
+ * An owner edit to a VERIFIED venue. Risky edits (new court, price band, hours) wait for an admin,
+ * so when the API answers 202 this approves the request and returns what the edit created, in the
+ * shape of the direct call (statusCode 201/200, data = the court / rule / venue).
+ */
+export async function ownerEdit(
+  app: FastifyInstance,
+  f: Pick<Fixture, 'owner' | 'admin'>,
+  method: 'POST' | 'PATCH' | 'DELETE',
+  url: string,
+  payload?: unknown,
+) {
+  const res = await call(app, method, url, f.owner.accessToken, payload)
+  if (res.statusCode !== 202) return { statusCode: res.statusCode, data: res.json().data }
+  const id = res.json().data.id as string
+  const ok = await call(
+    app,
+    'POST',
+    `/api/v1/admin/venue-changes/${id}/approve`,
+    f.admin.accessToken,
+    {},
+  )
+  if (ok.statusCode !== 200) throw new Error('approve failed: ' + ok.body)
+  return { statusCode: method === 'POST' ? 201 : 200, data: ok.json().data.applied }
 }

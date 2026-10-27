@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sportra API",
-    "description": "All Sportra backend endpoints. Import, then: (1) run 'Search venues'/'Availability grid' for data, (2) log in as player / owner / admin (Auth folder) - tokens are saved automatically into the collection variables and each folder uses the right one. Login codes arrive by e-mail (dev: MailHog http://localhost:58025); put the code in the otpCode variable. Base URL is the baseUrl variable (default http://localhost:3000). Bookings use tomorrow's date; set the dateOverride variable (YYYY-MM-DD) to book another day, for example today to test check-in (check-in only opens shortly before a slot starts).",
+    "description": "All Sportra backend endpoints. Import, then: (1) run 'Search venues'/'Availability grid' for data, (2) log in as player / owner / admin (Auth folder) - tokens are saved automatically into the collection variables and each folder uses the right one. Login codes arrive by e-mail (dev: MailHog http://localhost:58025); put the code in the otpCode variable. Base URL is the baseUrl variable (default http://localhost:3000). Bookings use tomorrow's date; set the dateOverride variable (YYYY-MM-DD) to book another day, for example today to test check-in (check-in only opens shortly before a slot starts).\n\nVenue review flow (owner / admin): Owner: Create venue (photos) > Add court (images) > Add pricing rule > Submit for review. Admin: Venues to review > Open review (you hold it) > Venue diff since last submission > Decide review (APPROVED / CHANGES_REQUESTED / REJECTED, the owner gets an e-mail). On a live venue, risky owner edits (new court, price bands, hours) answer 202 and appear in 'Venue changes waiting for approval'; use Approve / Reject venue change. Suspend: 'Suspend venue - pause online' or 'Suspend preview' then 'Suspend venue - STOP ALL'. A rejected venue can be copied with 'Copy rejected venue as new draft'. Photos: 'Upload venue photo' / 'Upload court photo' (form-data file) return a link to save in photos / images.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -211,11 +211,19 @@
     },
     {
       "key": "photoUrl",
-      "value": ""
+      "value": "https://res.cloudinary.com/demo/image/upload/sample.jpg"
     },
     {
       "key": "courtPhotoUrl",
+      "value": "https://res.cloudinary.com/demo/image/upload/sample.jpg"
+    },
+    {
+      "key": "changeId",
       "value": ""
+    },
+    {
+      "key": "confirmCount",
+      "value": "0"
     }
   ],
   "event": [
@@ -1529,10 +1537,10 @@
                 "venues"
               ]
             },
-            "description": "Needs the GROUND_OWNER role (register with signupIntent GROUND_OWNER, or log in as the seeded demo owner). A normal user gets 403 PERMISSION_DENIED. areaId is optional: add it later with 'Update venue'. Saves newVenueId, which the rest of this folder and the admin review use.",
+            "description": "Needs the GROUND_OWNER role (register with signupIntent GROUND_OWNER, or log in as the seeded demo owner). A normal user gets 403 PERMISSION_DENIED. areaId is optional: add it later with 'Update venue'. Saves newVenueId, which the rest of this folder and the admin review use. photos: up to 10 https links; Submit needs at least one (use 'Upload venue photo' for a real link, the default {{photoUrl}} is a sample picture).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Futsal Arena\",\n  \"city\": \"Karachi\",\n  \"address\": \"Street 5, DHA Phase 6\",\n  \"lat\": 24.8138,\n  \"lng\": 67.064,\n  \"amenities\": [\n    \"PARKING\",\n    \"FLOODLIGHTS\"\n  ],\n  \"contactPhone\": \"+923001234567\",\n  \"cancellationCutoffHours\": 12,\n  \"operatingHours\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  }\n}",
+              "raw": "{\n  \"name\": \"Postman Futsal Arena\",\n  \"city\": \"Karachi\",\n  \"address\": \"Street 5, DHA Phase 6\",\n  \"lat\": 24.8138,\n  \"lng\": 67.064,\n  \"amenities\": [\n    \"PARKING\",\n    \"FLOODLIGHTS\"\n  ],\n  \"contactPhone\": \"+923001234567\",\n  \"cancellationCutoffHours\": 12,\n  \"operatingHours\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  },\n  \"photos\": [\n    \"{{photoUrl}}\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1595,7 +1603,7 @@
                 "{{newVenueId}}"
               ]
             },
-            "description": "Any create-venue field can be changed while the venue is a draft. To add an area later, add \"areaId\": \"{{areaId}}\" to the body (areaId is saved by 'List areas' in Discovery). Area is optional.",
+            "description": "Any create-venue field can be changed while the venue is a draft. To add an area later, add \"areaId\": \"{{areaId}}\" to the body (areaId is saved by 'List areas' in Discovery). Area is optional. Photos, contacts and amenities apply at once. operatingHours on a VERIFIED venue waits for an admin (202, or 200 with pendingChange when other fields were sent too). Address, pin, city, area and cancellation cutoff on a verified venue are refused (MATERIAL_EDIT_REQUIRES_REVIEW).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"contactEmail\": \"arena@gmail.com\",\n  \"photos\": [\"{{photoUrl}}\"]\n}",
@@ -1605,7 +1613,64 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update venue - opening hours only (live venue waits for approval)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}"
+              ]
+            },
+            "description": "Only the opening hours. On a VERIFIED venue this answers 202 and the change id is saved as changeId; an admin approves it with 'Approve venue change'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operatingHours\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Upload venue photo",
@@ -1729,10 +1794,10 @@
                 "courts"
               ]
             },
-            "description": "One call creates the court with its images, its own weekly opening hours (schedule; leave it out to use the venue's hours) and its price bands (pricing; leave it out to add bands later). environment is INDOOR or OUTDOOR (required); sport and surface are required; images: up to 10 URLs; isBookable false hides the court from players. If a price band is invalid nothing is created. priceMinor is in paisa. Repeat this request for every court of the ground (futsal, padel, cricket nets...).",
+            "description": "One call creates the court with its images, its own weekly opening hours (schedule; leave it out to use the venue's hours) and its price bands (pricing; leave it out to add bands later). environment is INDOOR or OUTDOOR (required); sport and surface are required; images: up to 10 URLs; isBookable false hides the court from players. If a price band is invalid nothing is created. priceMinor is in paisa. Repeat this request for every court of the ground (futsal, padel, cricket nets...). On a VERIFIED venue this edit is risky and answers 202: the change waits in the admin queue ('Venue changes waiting for approval'); its id is saved as changeId. On a draft or CHANGES_REQUESTED venue it applies at once. images: up to 10 https links; Submit needs at least one per court.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Padel Court 1\",\n  \"sport\": \"PADEL\",\n  \"surface\": \"GLASS_PADEL\",\n  \"environment\": \"INDOOR\",\n  \"capacity\": 4,\n  \"slotMinutes\": 60,\n  \"isBookable\": true,\n  \"images\": [\n    \"https://example.com/court1-a.jpg\",\n    \"https://example.com/court1-b.jpg\"\n  ],\n  \"schedule\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  },\n  \"pricing\": [\n    {\n      \"name\": \"Day\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"09:00\",\n      \"toTime\": \"18:00\",\n      \"priceMinor\": 200000,\n      \"tag\": \"OFF_PEAK\"\n    },\n    {\n      \"name\": \"Evening\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"18:00\",\n      \"toTime\": \"23:00\",\n      \"priceMinor\": 300000,\n      \"tag\": \"PEAK\"\n    }\n  ]\n}",
+              "raw": "{\n  \"name\": \"Padel Court 1\",\n  \"sport\": \"PADEL\",\n  \"surface\": \"GLASS_PADEL\",\n  \"environment\": \"INDOOR\",\n  \"capacity\": 4,\n  \"slotMinutes\": 60,\n  \"isBookable\": true,\n  \"images\": [\n    \"{{courtPhotoUrl}}\"\n  ],\n  \"schedule\": {\n    \"mon\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"tue\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"wed\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"thu\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"fri\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sat\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ],\n    \"sun\": [\n      {\n        \"open\": \"09:00\",\n        \"close\": \"23:00\"\n      }\n    ]\n  },\n  \"pricing\": [\n    {\n      \"name\": \"Day\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"09:00\",\n      \"toTime\": \"18:00\",\n      \"priceMinor\": 200000,\n      \"tag\": \"OFF_PEAK\"\n    },\n    {\n      \"name\": \"Evening\",\n      \"dayType\": \"ANY\",\n      \"fromTime\": \"18:00\",\n      \"toTime\": \"23:00\",\n      \"priceMinor\": 300000,\n      \"tag\": \"PEAK\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1746,7 +1811,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('newCourtId', v); } catch (e) {}"
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }",
+                  "else { try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('newCourtId', v); } catch (e) {} }"
                 ]
               }
             }
@@ -1798,7 +1864,7 @@
                 "{{newCourtId}}"
               ]
             },
-            "description": "Any court field can be changed. isBookable false switches the court off. \"schedule\": null makes the court follow the venue hours again.",
+            "description": "Any court field can be changed. isBookable false switches the court off. \"schedule\": null makes the court follow the venue hours again. Changing schedule or slotMinutes, or switching a hidden court ON, is risky (202 on a verified venue); images, name, capacity and switching OFF apply at once.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Padel Court 1 (renamed)\",\n  \"isBookable\": true,\n  \"environment\": \"INDOOR\",\n  \"images\": [\n    \"https://example.com/court1-new.jpg\"\n  ]\n}",
@@ -1808,7 +1874,18 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List pricing rules",
@@ -1893,7 +1970,7 @@
                 "pricing-rules"
               ]
             },
-            "description": "Adds one more band to an existing court (a higher priority wins where bands overlap). Used here to demonstrate deleting a rule (next request).",
+            "description": "Adds one more band to an existing court (a higher priority wins where bands overlap). Used here to demonstrate deleting a rule (next request). On a VERIFIED venue this edit is risky and answers 202: the change waits in the admin queue ('Venue changes waiting for approval'); its id is saved as changeId. On a draft or CHANGES_REQUESTED venue it applies at once.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"courtId\": \"{{newCourtId}}\",\n  \"name\": \"Weekend special\",\n  \"dayType\": \"WEEKEND\",\n  \"fromTime\": \"09:00\",\n  \"toTime\": \"23:00\",\n  \"priceMinor\": 400000,\n  \"tag\": \"PEAK\",\n  \"priority\": 5\n}",
@@ -1910,7 +1987,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('ruleId', v); } catch (e) {}"
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }",
+                  "else { try { const j = pm.response.json(); const v = j.data && j.data.id; if (v) pm.collectionVariables.set('ruleId', v); } catch (e) {} }"
                 ]
               }
             }
@@ -1936,8 +2014,19 @@
                 "{{ruleId}}"
               ]
             },
-            "description": "Deletes the extra weekend rule saved above. Rules can only be changed while the venue is a draft."
-          }
+            "description": "Deletes the extra weekend rule saved above.  On a VERIFIED venue this edit is risky and answers 202: the change waits in the admin queue ('Venue changes waiting for approval'); its id is saved as changeId. On a draft or CHANGES_REQUESTED venue it applies at once."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) { try { pm.collectionVariables.set('changeId', pm.response.json().data.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Submit for review",
@@ -1980,6 +2069,84 @@
                 "verification"
               ]
             }
+          }
+        },
+        {
+          "name": "Copy rejected venue as new draft",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/copy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "copy"
+              ]
+            },
+            "description": "OWNER only, and only for a REJECTED venue. Creates a new draft with the same details, photos, courts and price bands. Saves the new venue id as newVenueId. Max 3 copies per day."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); if (j.data && j.data.id) { pm.collectionVariables.set('newVenueId', j.data.id); } } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My pending changes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "change-requests"
+              ]
+            },
+            "description": "Edits to a live (VERIFIED) venue that wait for an admin: a new court, price band changes, opening hours or slot length. Adding a court, a price band or hours on a verified venue answers 202 with the change request instead of applying it."
+          }
+        },
+        {
+          "name": "Withdraw a pending change",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{newVenueId}}/change-requests/{{changeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{newVenueId}}",
+                "change-requests",
+                "{{changeId}}"
+              ]
+            },
+            "description": "Set changeId from 'My pending changes'."
           }
         }
       ],
@@ -3646,9 +3813,16 @@
                     {
                       "key": "offset",
                       "value": "0"
+                    },
+                    {
+                      "key": "claimed",
+                      "value": "mine",
+                      "disabled": true,
+                      "description": "mine = reviews you opened, none = nobody holds it"
                     }
                   ]
-                }
+                },
+                "description": "Filter claimed=mine|none to see who holds a review. Each item has claimedBy and hoursInQueue; oldest submissions come first."
               }
             },
             {
@@ -3690,7 +3864,8 @@
                     "{{newVenueId}}",
                     "open-review"
                   ]
-                }
+                },
+                "description": "Claims the review for you (SUBMITTED -> UNDER_REVIEW). Another admin then gets 409 REVIEW_CLAIMED and cannot decide it. Use 'Release review' to hand it back."
               }
             },
             {
@@ -3717,7 +3892,7 @@
                     "review"
                   ]
                 },
-                "description": "decision: APPROVED, CHANGES_REQUESTED or REJECTED (comments required unless approving). Optional fieldFlags: [{field, note}].",
+                "description": "decision: APPROVED, CHANGES_REQUESTED or REJECTED (comments required unless approving). Optional fieldFlags: [{field, note}]. Only the admin who opened the review can decide (409 REVIEW_NOT_YOURS otherwise). The owner receives an e-mail with your comments.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"decision\": \"APPROVED\",\n  \"comments\": \"Looks good\"\n}",
@@ -3730,7 +3905,7 @@
               }
             },
             {
-              "name": "Suspend venue",
+              "name": "Suspend venue - pause online (default)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -3755,13 +3930,50 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"reason\": \"Safety complaint\"\n}",
+                  "raw": "{\n  \"reason\": \"Complaints from players\",\n  \"mode\": \"PAUSE_ONLINE\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "PAUSE_ONLINE: players cannot find or book the venue; its own point of sale and existing bookings keep working. The owner is e-mailed the reason. Bring it back with 'Reinstate venue'."
+              }
+            },
+            {
+              "name": "Suspend venue - STOP ALL (after preview)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "suspend"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Fake venue, documents rejected\",\n  \"mode\": \"STOP_ALL\",\n  \"confirmCount\": {{confirmCount}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Run 'Suspend preview (stop all)' first. STOP_ALL cancels and refunds every future app booking (progress is an outage lock), tells the owner, and locks walk-ins, manual bookings and blocks (409 VENUE_SUSPENDED). A wrong confirmCount gives 409 PREVIEW_STALE. 'Reinstate venue' releases the lock and reopens the hours."
               }
             },
             {
@@ -3895,6 +4107,213 @@
                     "{{newAreaId}}"
                   ]
                 }
+              }
+            },
+            {
+              "name": "Suspend preview (stop all)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/suspend/preview",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "suspend",
+                    "preview"
+                  ]
+                },
+                "description": "Counts the future app bookings a full stop would cancel and refund. Send that number back as confirmCount in 'Suspend venue'. Saves the number as confirmCount for 'Suspend venue - STOP ALL'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try { const j = pm.response.json(); if (j.data) { pm.collectionVariables.set('confirmCount', j.data.confirmCount); } } catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Release review",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/release-review",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "release-review"
+                  ]
+                },
+                "description": "Gives a review you opened back to the queue so another admin can take it."
+              }
+            },
+            {
+              "name": "Venue diff since last submission",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venues/{{newVenueId}}/diff",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venues",
+                    "{{newVenueId}}",
+                    "diff"
+                  ]
+                },
+                "description": "What the owner changed between the last two submissions, with the previous revision note."
+              }
+            },
+            {
+              "name": "Venue changes waiting for approval",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venue-changes?status=PENDING",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venue-changes"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING"
+                    }
+                  ]
+                },
+                "description": "Edits to live venues that wait for an admin. Saves the first one as changeId."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try { const j = pm.response.json(); const c = j.data && j.data.items && j.data.items[0]; if (c) { pm.collectionVariables.set('changeId', c.id); } } catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "See one venue change",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venue-changes/{{changeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venue-changes",
+                    "{{changeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve venue change",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venue-changes/{{changeId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venue-changes",
+                    "{{changeId}}",
+                    "approve"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Looks fine\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Applies the edit for real (court, price band or hours) and rebuilds the slots."
+              }
+            },
+            {
+              "name": "Reject venue change",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/venue-changes/{{changeId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "venue-changes",
+                    "{{changeId}}",
+                    "reject"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Price is too high for this area\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "A note is required. Nothing changes on the venue."
               }
             }
           ]

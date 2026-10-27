@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { courtEvent, pricingEvent } from '../venue.events'
-import { VenueRepository } from '../venue.repository'
+import { inTx, VenueQueries, VenueRepository } from '../venue.repository'
 import { assertEditable, assertHours, planPricingRules } from '../venue.rules'
-import { VenueService } from '../venue.service'
+import { createVenueService, VenueService } from '../venue.service'
 import { courtJson, ruleJson } from '../venue.view'
 
 /**
@@ -10,11 +10,12 @@ import { courtJson, ruleJson } from '../venue.view'
  * audit and events commit together, so a bad price band leaves no half-made court behind.
  */
 export const courtMediator = (repo: VenueRepository, svc: VenueService) => ({
-  async add(venueId: string, actorId: string, input: any) {
-    assertEditable(await svc.requireVenue(venueId))
+  async add(venueId: string, actorId: string, input: any, tx?: VenueQueries) {
+    const s = tx ? createVenueService(tx) : svc
+    assertEditable(await s.requireVenue(venueId))
     if (input.schedule) assertHours(input.schedule)
     const bands = planPricingRules(input.pricing ?? [])
-    return repo.transaction(async (q) => {
+    return inTx(repo, tx, async (q) => {
       const c = await q.createCourt({
         venueId,
         name: input.name.trim(),
@@ -44,11 +45,12 @@ export const courtMediator = (repo: VenueRepository, svc: VenueService) => ({
     })
   },
 
-  async update(venueId: string, courtId: string, actorId: string, input: any) {
-    assertEditable(await svc.requireVenue(venueId))
-    await svc.requireCourt(venueId, courtId)
+  async update(venueId: string, courtId: string, actorId: string, input: any, tx?: VenueQueries) {
+    const s = tx ? createVenueService(tx) : svc
+    assertEditable(await s.requireVenue(venueId))
+    await s.requireCourt(venueId, courtId)
     if (input.schedule) assertHours(input.schedule)
-    return repo.transaction(async (q) => {
+    return inTx(repo, tx, async (q) => {
       const c = await q.updateCourt(courtId, {
         ...(input.name && { name: input.name.trim() }),
         ...(input.sport && { sport: input.sport }),

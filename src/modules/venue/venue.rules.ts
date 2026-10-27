@@ -111,7 +111,9 @@ export function submissionProblems(
   const hoursErr = validateHours(v.operatingHours as unknown as OperatingHours)
   if (hoursErr) problems.push(hoursErr)
   if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng)) problems.push('Confirm the map pin')
+  if (v.photos.length === 0) problems.push('Add at least one venue photo')
   for (const c of courts) {
+    if (c.images.length === 0) problems.push(`Court "${c.name}": add at least one photo`)
     const hours = (c.hoursOverride ?? v.operatingHours) as unknown as OperatingHours
     const gap = findPricingGap(hours, c.slotMinutes, c.pricingRules.map(toRule))
     if (gap) problems.push(`Court "${c.name}": ${gap}`)

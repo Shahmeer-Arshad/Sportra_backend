@@ -175,12 +175,20 @@ model Venue {
   submittedAt             DateTime?                             @map("submitted_at") @db.Timestamptz
   verifiedAt              DateTime?                             @map("verified_at") @db.Timestamptz
   verifiedBy              String?                               @map("verified_by") @db.Uuid
+  suspensionMode          String?                               @map("suspension_mode") // PAUSE_ONLINE | STOP_ALL, only while SUSPENDED
+  suspendedAt             DateTime?                             @map("suspended_at") @db.Timestamptz
+  suspensionLockId        String?                               @map("suspension_lock_id") @db.Uuid
+  reviewClaimedBy         String?                               @map("review_claimed_by") @db.Uuid
+  reviewClaimedAt         DateTime?                             @map("review_claimed_at") @db.Timestamptz
+  copiedFrom              String?                               @map("copied_from") @db.Uuid
   version                 Int                                   @default(1)
   createdAt               DateTime                              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt               DateTime                              @updatedAt @map("updated_at") @db.Timestamptz
 
-  courts  Court[]
-  reviews VenueReview[]
+  courts         Court[]
+  reviews        VenueReview[]
+  submissions    VenueSubmission[]
+  changeRequests VenueChangeRequest[]
 
   @@index([city, areaId])
   @@index([location], type: Gist, map: "venues_location_gix")
@@ -844,4 +852,37 @@ model UserRole {
   @@index([userId, isActive])
   @@index([venueId])
   @@map("user_roles")
+}
+
+model VenueSubmission {
+  id           String   @id @db.Uuid
+  venueId      String   @map("venue_id") @db.Uuid
+  venue        Venue    @relation(fields: [venueId], references: [id])
+  submissionNo Int      @map("submission_no")
+  snapshot     Json     @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([venueId, submissionNo], map: "venue_submissions_no_key")
+  @@map("venue_submissions")
+}
+
+model VenueChangeRequest {
+  id            String    @id @db.Uuid
+  venueId       String    @map("venue_id") @db.Uuid
+  venue         Venue     @relation(fields: [venueId], references: [id])
+  op            String // court.add | court.update | rule.add | rule.delete | venue.update_hours
+  params        Json      @default("{}") @db.JsonB
+  payload       Json      @default("{}") @db.JsonB
+  summary       String
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED | WITHDRAWN | FAILED
+  requestedBy   String    @map("requested_by") @db.Uuid
+  decidedBy     String?   @map("decided_by") @db.Uuid
+  decisionNote  String?   @map("decision_note")
+  failureReason String?   @map("failure_reason")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  decidedAt     DateTime? @map("decided_at") @db.Timestamptz
+
+  @@index([status, createdAt], map: "venue_change_requests_status")
+  @@index([venueId, status], map: "venue_change_requests_venue")
+  @@map("venue_change_requests")
 }

@@ -3,8 +3,10 @@ import { BadRequestError, ConflictError, NotFoundError } from '../../utils/error
 import { slugify } from './venue.rules'
 import { VenueQueries } from './venue.repository'
 import { SearchParams } from './venue.search'
+import { diffSnapshots, Snapshot } from './venue.snapshot'
 import {
   buildPricingPreview,
+  changeJson,
   courtJson,
   publicVenueJson,
   ruleJson,
@@ -60,6 +62,10 @@ export function createVenueService(repo: VenueQueries) {
         status: v.verificationStatus,
         submittedAt: v.submittedAt,
         verifiedAt: v.verifiedAt,
+        suspension:
+          v.verificationStatus === 'SUSPENDED'
+            ? { mode: v.suspensionMode, since: v.suspendedAt }
+            : null,
         reviews: await repo.reviews(venueId, 10),
       }
     },
@@ -78,10 +84,15 @@ export function createVenueService(repo: VenueQueries) {
     },
 
     // ───────── admin ─────────
-    async adminList(q: { status?: string; city?: string; limit: number; offset: number }) {
+    async adminList(
+      q: { status?: string; city?: string; claimed?: string; limit: number; offset: number },
+      adminId?: string,
+    ) {
       const where: Prisma.VenueWhereInput = {
         ...(q.status && { verificationStatus: q.status }),
         ...(q.city && { city: q.city }),
+        ...(q.claimed === 'none' && { reviewClaimedBy: null }),
+        ...(q.claimed === 'mine' && { reviewClaimedBy: adminId ?? '' }),
       }
       const [items, total] = await repo.adminList(where, q.limit, q.offset)
       const now = Date.now()
@@ -89,6 +100,7 @@ export function createVenueService(repo: VenueQueries) {
         total,
         items: items.map((v) => ({
           ...venueJson(v),
+          claimedBy: v.reviewClaimedBy,
           hoursInQueue: v.submittedAt
             ? Math.floor((now - v.submittedAt.getTime()) / 3600_000)
             : null,
@@ -110,6 +122,52 @@ export function createVenueService(repo: VenueQueries) {
             ? `Pin is ${pinDistanceKm.toFixed(1)} km from the claimed area`
             : null,
       }
+    },
+
+    /** What changed between the last two submissions (the admin checks the owner's fixes). */
+    async adminDiff(venueId: string) {
+      await requireVenue(venueId)
+      const [latest, previous] = await repo.latestSubmissions(venueId, 2)
+      if (!latest) return { submissions: 0, firstSubmission: true, changes: [] }
+      const lastDecision = (await repo.reviews(venueId, 5)).find((r) =>
+        ['CHANGES_REQUESTED', 'REJECTED'].includes(r.decision),
+      )
+      return {
+        submissions: latest.submissionNo,
+        firstSubmission: !previous,
+        submissionNo: latest.submissionNo,
+        previousSubmissionNo: previous?.submissionNo ?? null,
+        previousRequest: lastDecision
+          ? {
+              decision: lastDecision.decision,
+              comments: lastDecision.comments,
+              fieldFlags: lastDecision.fieldFlags,
+            }
+          : null,
+        changes: previous
+          ? diffSnapshots(
+              previous.snapshot as unknown as Snapshot,
+              latest.snapshot as unknown as Snapshot,
+            )
+          : [],
+      }
+    },
+
+    // ───────── change requests ─────────
+    async listChanges(venueId: string) {
+      return (await repo.changesOfVenue(venueId)).map((c) => changeJson(c))
+    },
+    async adminChanges(q: { status?: string; limit: number; offset: number }) {
+      const [items, total] = await repo.adminChanges(q.status, q.limit, q.offset)
+      return {
+        total,
+        items: items.map((c) => changeJson(c, { venueName: c.venue.name, city: c.venue.city })),
+      }
+    },
+    async adminChange(id: string) {
+      const c = await repo.changeById(id)
+      if (!c) throw new NotFoundError('Change request not found', 'CHANGE_NOT_FOUND')
+      return changeJson(c)
     },
 
     // ───────── areas ─────────

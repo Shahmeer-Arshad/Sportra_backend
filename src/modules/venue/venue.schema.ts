@@ -123,6 +123,15 @@ export const reviewBody = {
     },
   },
 }
+export const suspendBody = {
+  type: 'object',
+  required: ['reason'],
+  properties: {
+    reason: { type: 'string', minLength: 3, maxLength: 500 },
+    mode: { type: 'string', enum: ['PAUSE_ONLINE', 'STOP_ALL'], default: 'PAUSE_ONLINE' },
+    confirmCount: { type: 'integer', minimum: 0 },
+  },
+}
 export const reasonBody = {
   type: 'object',
   required: ['reason'],
@@ -164,6 +173,7 @@ export const adminListQuery = {
   type: 'object',
   properties: {
     status: { type: 'string' },
+    claimed: { type: 'string', enum: ['mine', 'none', 'any'] },
     city: { type: 'string' },
     limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
     offset: { type: 'integer', minimum: 0, default: 0 },
@@ -185,4 +195,29 @@ export const pricingPreviewQuery = {
     courtId: { type: 'string', format: 'uuid' },
     date: { type: 'string', format: 'date' },
   },
+}
+
+const idParam = { type: 'object', required: ['id'], properties: { id: uuid } }
+export const adminIdParams = idParam
+export const changeParams = {
+  type: 'object',
+  required: ['venueId', 'changeId'],
+  properties: { venueId: uuid, changeId: uuid },
+}
+export const adminChangesQuery = {
+  type: 'object',
+  properties: {
+    status: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'FAILED'] },
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+  },
+}
+export const decisionNoteBody = {
+  type: 'object',
+  properties: { note: { type: 'string', maxLength: 500 } },
+}
+export const rejectChangeBody = {
+  type: 'object',
+  required: ['note'],
+  properties: { note: { type: 'string', minLength: 3, maxLength: 500 } },
 }

@@ -11,7 +11,11 @@ import { syncRbac } from './seed-rbac'
  * Dev seed (safe to run again): an admin, areas for Karachi and Lahore, one demo owner and 20
  * verified demo venues with courts and prices, then bookable slots for the whole horizon (Phase 2).
  * Demo venues are skipped if they already exist; slot generation is idempotent.
+ *
+ * `--admin-only` (npm run db:seed:admin) creates just the roles/permissions and the admin account:
+ * no areas, demo owner or demo venues. Use it for a real database.
  */
+const adminOnly = process.argv.includes('--admin-only')
 const prisma = new PrismaClient()
 
 const AREAS = [
@@ -81,6 +85,10 @@ async function main() {
   const roles = roleQueries(prisma)
   await roles.grantRole(admin.id, 'USER')
   await roles.grantRole(admin.id, 'ADMIN')
+  if (adminOnly) {
+    console.log('✅ Seed completed (admin only: no areas, demo owner or demo venues)')
+    return
+  }
 
   const areaIds: { id: string; city: string; name: string; lat: number; lng: number }[] = []
   for (const [city, name, lat, lng, aliases] of AREAS) {

@@ -18,6 +18,8 @@ import {
   signupVerified,
   slotsOn,
   tomorrow,
+  ownerEdit,
+  PHOTO,
 } from './helpers'
 
 let app: FastifyInstance
@@ -118,32 +120,26 @@ describe('slot generation', () => {
     )
     expect(w.statusCode).toBe(201)
 
-    // a price edit is "delete the band, add it again at the new price"
+    // a price edit is "delete the band, add it again at the new price" (each waits for an admin)
     expect(
       (
-        await call(
+        await ownerEdit(
           app,
+          f,
           'DELETE',
           `/api/v1/pos/venues/${f.venueId}/pricing-rules/${evening.id}`,
-          f.owner.accessToken,
         )
       ).statusCode,
     ).toBe(200)
-    const re = await call(
-      app,
-      'POST',
-      `/api/v1/pos/venues/${f.venueId}/pricing-rules`,
-      f.owner.accessToken,
-      {
-        courtId: f.courtId,
-        name: 'Evening',
-        dayType: 'ANY',
-        fromTime: '18:00',
-        toTime: '02:00',
-        priceMinor: 350000,
-        tag: 'PEAK',
-      },
-    )
+    const re = await ownerEdit(app, f, 'POST', `/api/v1/pos/venues/${f.venueId}/pricing-rules`, {
+      courtId: f.courtId,
+      name: 'Evening',
+      dayType: 'ANY',
+      fromTime: '18:00',
+      toTime: '02:00',
+      priceMinor: 350000,
+      tag: 'PEAK',
+    })
     expect(re.statusCode).toBe(201)
     await app.booking.idle()
 
@@ -172,7 +168,7 @@ describe('slot generation', () => {
       },
     )
     expect(w.statusCode).toBe(201)
-    const patch = await call(app, 'PATCH', `/api/v1/pos/venues/${f.venueId}`, f.owner.accessToken, {
+    const patch = await ownerEdit(app, f, 'PATCH', `/api/v1/pos/venues/${f.venueId}`, {
       operatingHours: hours('08:00', '22:00'),
     })
     expect(patch.statusCode).toBe(200)
@@ -198,35 +194,24 @@ describe('slot generation', () => {
 
   it('a second court added later gets its own slots', async () => {
     const f = await buildFixture(app)
-    const second = await call(
-      app,
-      'POST',
-      `/api/v1/pos/venues/${f.venueId}/courts`,
-      f.owner.accessToken,
-      {
-        name: 'Court 2',
-        sport: 'PADEL',
-        surface: 'GLASS_PADEL',
-        environment: 'INDOOR',
-      },
-    )
+    const second = await ownerEdit(app, f, 'POST', `/api/v1/pos/venues/${f.venueId}/courts`, {
+      name: 'Court 2',
+      sport: 'PADEL',
+      surface: 'GLASS_PADEL',
+      environment: 'INDOOR',
+      images: [PHOTO],
+    })
     expect(second.statusCode).toBe(201)
-    const id2 = second.json().data.id as string
+    const id2 = second.data.id as string
     for (const r of [
       { name: 'Day', fromTime: '06:00', toTime: '18:00', priceMinor: 400000, tag: 'OFF_PEAK' },
       { name: 'Eve', fromTime: '18:00', toTime: '02:00', priceMinor: 500000, tag: 'PEAK' },
     ])
-      await call(
-        app,
-        'POST',
-        `/api/v1/pos/venues/${f.venueId}/pricing-rules`,
-        f.owner.accessToken,
-        {
-          courtId: id2,
-          dayType: 'ANY',
-          ...r,
-        },
-      )
+      await ownerEdit(app, f, 'POST', `/api/v1/pos/venues/${f.venueId}/pricing-rules`, {
+        courtId: id2,
+        dayType: 'ANY',
+        ...r,
+      })
     await app.booking.idle()
     const [{ n }] = await app.prisma.$queryRaw<
       { n: number }[]

@@ -13,7 +13,7 @@ declare module 'fastify' {
 
 // Requests that change what a venue sells: courts, prices, hours, or its verified state.
 const CATALOG_URL =
-  /^\/api\/v1\/(pos\/venues\/:venueId(\/|\/courts(\/:courtId)?|\/pricing-rules(\/:ruleId)?)?|admin\/venues\/:id\/(review|suspend|reinstate))$/
+  /^\/api\/v1\/(pos\/venues\/:venueId(\/|\/courts(\/:courtId)?|\/pricing-rules(\/:ruleId)?)?|admin\/venues\/:id\/(review|suspend|reinstate)|admin\/venue-changes\/:id\/approve)$/
 
 /**
  * Builds the booking services and keeps slots in step with the venue catalogue: after a request
@@ -58,7 +58,8 @@ const bookingPlugin = fp(async (app: FastifyInstance) => {
       CATALOG_URL.test(req.routeOptions.url ?? '')
     ) {
       const p = req.params as { venueId?: string; id?: string }
-      const venueId = p.venueId ?? p.id
+      // approving a change request: the route id is the request, the controller names the venue
+      const venueId = (req as { syncVenueId?: string }).syncVenueId ?? p.venueId ?? p.id
       if (venueId) syncVenue(venueId)
     }
     return payload

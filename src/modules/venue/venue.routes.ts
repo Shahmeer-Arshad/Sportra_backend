@@ -8,7 +8,7 @@ const sec = [{ bearerAuth: [] }]
 const publicLimit = { rateLimit: { max: 60, timeWindow: '1 minute' } }
 
 export async function venueRoutes(app: FastifyInstance) {
-  const c = createVenueController(app.prisma)
+  const c = createVenueController(app)
 
   // ───────────── Owner: create a venue, list mine ─────────────
   await app.register(
@@ -46,6 +46,21 @@ export async function venueRoutes(app: FastifyInstance) {
         c.submitVenue,
       )
       pos.get('/verification', staff('Venue'), c.verification)
+      pos.post(
+        '/copy',
+        {
+          onRequest: [owner],
+          config: { rateLimit: { max: 10, timeWindow: '1 hour' } },
+          schema: { tags: ['Venue'], security: sec },
+        },
+        c.copyVenue,
+      )
+      pos.get('/change-requests', staff('Venue'), c.listChanges)
+      pos.delete(
+        '/change-requests/:changeId',
+        staff('Venue', { params: S.changeParams }),
+        c.withdrawChange,
+      )
 
       pos.get('/courts', staff('Courts'), c.listCourts)
       pos.post('/courts', staff('Courts', { body: S.courtBody }), c.addCourt)
@@ -74,7 +89,26 @@ export async function venueRoutes(app: FastifyInstance) {
       admin.get('/venues/:id', adm(), c.adminGet)
       admin.post('/venues/:id/open-review', adm(), c.openReview)
       admin.post('/venues/:id/review', adm({ body: S.reviewBody }), c.decide)
-      admin.post('/venues/:id/suspend', adm({ body: S.reasonBody }), c.suspend)
+      admin.post('/venues/:id/suspend/preview', adm({ params: S.adminIdParams }), c.suspendPreview)
+      admin.post(
+        '/venues/:id/suspend',
+        adm({ params: S.adminIdParams, body: S.suspendBody }),
+        c.suspend,
+      )
+      admin.post('/venues/:id/release-review', adm({ params: S.adminIdParams }), c.releaseReview)
+      admin.get('/venues/:id/diff', adm({ params: S.adminIdParams }), c.adminDiff)
+      admin.get('/venue-changes', adm({ querystring: S.adminChangesQuery }), c.adminChanges)
+      admin.get('/venue-changes/:id', adm({ params: S.adminIdParams }), c.adminChange)
+      admin.post(
+        '/venue-changes/:id/approve',
+        adm({ params: S.adminIdParams, body: S.decisionNoteBody }),
+        c.approveChange,
+      )
+      admin.post(
+        '/venue-changes/:id/reject',
+        adm({ params: S.adminIdParams, body: S.rejectChangeBody }),
+        c.rejectChange,
+      )
       admin.post('/venues/:id/reinstate', adm({ body: S.reasonBody }), c.reinstate)
 
       admin.post('/areas', adm({ body: S.areaBody }), c.createArea)

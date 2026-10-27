@@ -2,7 +2,13 @@ import { HotLane } from '../../../lib/hotlane'
 import { BadRequestError } from '../../../utils/errors'
 import { publishSlotUpdates } from '../booking.realtime'
 import { BookingRepository } from '../booking.repository'
-import { assertCourtsOfVenue, mapContention, parseWindow } from '../booking.rules'
+import {
+  assertCourtsOfVenue,
+  assertVenueOperating,
+  isStopped,
+  mapContention,
+  parseWindow,
+} from '../booking.rules'
 import { StaffActor } from './cancel-booking.mediator'
 
 type BlockReason = 'RAIN' | 'POWER_OUTAGE' | 'MAINTENANCE' | 'PRIVATE_EVENT' | 'OTHER'
@@ -15,6 +21,8 @@ export const blockSlotsMediator = (repo: BookingRepository, hotLane: HotLane) =>
     input: { courtIds: string[]; from: string; to: string; reason: BlockReason; note?: string },
   ) {
     const { from, to } = parseWindow(input)
+    const venue = await repo.venueById(venueId)
+    if (venue) assertVenueOperating({ stopped: isStopped(venue) })
     if (to.getTime() - from.getTime() > 62 * 86_400_000)
       throw new BadRequestError('A block can cover at most 62 days', 'VALIDATION_ERROR')
     await assertCourtsOfVenue(repo, venueId, input.courtIds)

@@ -1,4 +1,4 @@
-import { Court, PricingRule, Venue } from '@prisma/client'
+import { Court, PricingRule, Venue, VenueChangeRequest } from '@prisma/client'
 import {
   OperatingHours,
   PriceRule,
@@ -23,6 +23,22 @@ export const toRule = (r: PricingRule): PriceRule => ({
 
 /** BigInt is not JSON-safe; paisa fits easily inside a JS number (max Rs 1,000,000 per slot). */
 export const ruleJson = (r: PricingRule) => ({ ...r, priceMinor: Number(r.priceMinor) })
+export const changeJson = (c: VenueChangeRequest, extra: object = {}) => ({
+  id: c.id,
+  venueId: c.venueId,
+  op: c.op,
+  summary: c.summary,
+  status: c.status,
+  payload: c.payload,
+  params: c.params,
+  requestedBy: c.requestedBy,
+  decidedBy: c.decidedBy,
+  decisionNote: c.decisionNote,
+  failureReason: c.failureReason,
+  createdAt: c.createdAt,
+  decidedAt: c.decidedAt,
+  ...extra,
+})
 export const venueJson = (v: Venue) => ({ ...v, location: undefined })
 
 /** A court as the API shows it: `schedule` is its own opening hours, `isBookable` the on/off switch. */

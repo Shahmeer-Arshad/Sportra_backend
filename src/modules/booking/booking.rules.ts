@@ -76,6 +76,7 @@ export interface VenueInfo {
   timezone: string
   cancellationCutoffHours: number
   verified: boolean
+  stopped: boolean
   isActive: boolean
 }
 
@@ -148,10 +149,23 @@ export async function resolveRequestedSlots(
       timezone: v.timezone,
       cancellationCutoffHours: v.cancellationCutoffHours,
       verified: v.verificationStatus === 'VERIFIED',
+      stopped: isStopped(v),
       isActive: v.isActive && court.isActive,
     },
     courtName: court.name,
   }
+}
+
+/** An admin stopped the venue completely (STOP_ALL): the point of sale is locked for new sales. */
+export const isStopped = (v: { verificationStatus: string; suspensionMode: string | null }) =>
+  v.verificationStatus === 'SUSPENDED' && v.suspensionMode === 'STOP_ALL'
+
+export function assertVenueOperating(v: { stopped: boolean }) {
+  if (v.stopped)
+    throw new ConflictError(
+      'This venue is suspended by the platform. Contact support.',
+      'VENUE_SUSPENDED',
+    )
 }
 
 /** Phone numbers a venue has blocked (compared in one normalised shape). */

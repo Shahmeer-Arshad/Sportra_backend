@@ -8,6 +8,7 @@ import { publishBookingUpdate, publishSlotUpdates } from '../booking.realtime'
 import { BookingRepository } from '../booking.repository'
 import {
   allocateBooking,
+  assertVenueOperating,
   itemise,
   mapContention,
   namesOf,
@@ -42,6 +43,7 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
       maxSlots: 12,
       pastRule: 'END_IN_FUTURE',
     })
+    assertVenueOperating(venue)
     const total = slots.reduce((a, s) => a + s.priceMinor, 0n)
     // walk-in: cash collected defaults to the full price. manual: pay later keeps the balance open
     const cash =

@@ -58,7 +58,7 @@ node-starter/
 │   └── user.test.ts                # Integration tests
 ├── prisma/
 │   ├── schema.prisma               # DB schema (User + RefreshToken models)
-│   └── seed.ts                     # Seed script (admin user)
+│   └── seed.ts                     # Seed script (admin, or everything; see db:seed:admin)
 ├── vitest.config.ts                # Test runner configuration
 ├── docker-compose.yml              # PostgreSQL + Adminer services
 ├── Dockerfile                      # Multi-stage production image
@@ -101,10 +101,22 @@ npm run db:migrate
 
 ### 5. (Optional) Seed the database
 
+Admins cannot register through the API, so the seed is how the first admin is created.
+
 ```bash
+# Admin only (use this for a real / production database)
+npm run db:seed:admin        # same as: npm run db:seed -- --admin-only
+
+# Full development seed
 npm run db:seed
-# Creates admin@example.com / Admin@1234
 ```
+
+| Command | Creates |
+|---|---|
+| `npm run db:seed:admin` | Roles and permissions, and the admin account. Nothing else. |
+| `npm run db:seed` | The same, plus 8 areas (Karachi, Lahore), a demo owner (`demo.owner@sportra.local` / `Owner@12345`), 20 approved demo venues with courts and prices, and 60 days of bookable slots. Development only. |
+
+The admin is `admin@sportra.local` / `Admin@12345` unless you set `ADMIN_SEED_EMAIL` and `ADMIN_SEED_PASSWORD` in `.env` before running. Both commands are safe to run again (existing data is kept). Admin login always needs the emailed code: `POST /api/v1/public/auth/login`, then `/login/verify-otp`.
 
 ### 6. Start the dev server
 
@@ -185,7 +197,8 @@ app.delete('/:id', { preHandler: [authenticate, authorize('ADMIN')] }, handler)
 | `npm run db:migrate:prod` | Run migrations (production) |
 | `npm run db:generate` | Regenerate Prisma client |
 | `npm run db:studio` | Open Prisma Studio |
-| `npm run db:seed` | Seed the database |
+| `npm run db:seed` | Full development seed (admin, areas, demo owner, 20 demo venues, slots) |
+| `npm run db:seed:admin` | Seed only the roles and the admin account |
 | `npm run db:reset` | Reset all migrations and data |
 
 ---

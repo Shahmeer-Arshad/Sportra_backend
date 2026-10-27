@@ -1,17 +1,18 @@
 import { venueEvent } from '../venue.events'
-import { VenueRepository } from '../venue.repository'
+import { inTx, VenueQueries, VenueRepository } from '../venue.repository'
 import { venueJson } from '../venue.view'
 import { assertVenueEdit } from '../venue.rules'
-import { VenueService } from '../venue.service'
+import { createVenueService, VenueService } from '../venue.service'
 
 /** Owner or manager edits venue details; the rules decide who may change what. */
 export const updateVenueMediator =
   (repo: VenueRepository, svc: VenueService) =>
-  async (venueId: string, role: string, actorId: string, input: any) => {
-    const v = await svc.requireVenue(venueId)
+  async (venueId: string, role: string, actorId: string, input: any, tx?: VenueQueries) => {
+    const s = tx ? createVenueService(tx) : svc
+    const v = await s.requireVenue(venueId)
     assertVenueEdit(v, role, input)
-    if (input.areaId) await svc.assertArea(input.areaId)
-    const updated = await repo.transaction(async (q) => {
+    if (input.areaId) await s.assertArea(input.areaId)
+    const updated = await inTx(repo, tx, async (q) => {
       const n = await q.updateVenue(venueId, {
         ...(input.name && { name: input.name.trim() }),
         ...(input.city && { city: input.city.trim() }),
