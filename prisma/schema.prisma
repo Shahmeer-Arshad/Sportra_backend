@@ -159,7 +159,7 @@ model Venue {
   lat                     Float
   lng                     Float
   // Generated from lat/lng in the migration. Never written by the app; read with raw SQL.
-  location                Unsupported("geography(Point,4326)")?
+  location                Unsupported("geography(Point,4326)")? @default(dbgenerated("(st_setsrid(st_makepoint(lng, lat), 4326))::geography"))
   amenities               String[]                              @default([])
   whatsappNumber          String?                               @map("whatsapp_number")
   contactPhone            String?                               @map("contact_phone")
