@@ -121,3 +121,33 @@ describe('photo upload', () => {
     expect(bad.statusCode).toBe(400)
   })
 })
+
+describe('my photo upload (/me/uploads)', () => {
+  const mine = (token: string | undefined, file: Buffer, query = '') => {
+    const { payload, 'content-type': ct } = multipartBody(file)
+    return app.inject({
+      method: 'POST',
+      url: `/api/v1/me/uploads${query}`,
+      payload,
+      headers: { 'content-type': ct, ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      remoteAddress: nextIp(),
+    })
+  }
+
+  it('any signed-in user uploads an avatar by default, into their own folder', async () => {
+    const user = await signupVerified(app)
+    const res = await mine(user.accessToken, PNG)
+    expect(res.statusCode).toBe(201)
+    expect(res.json().data.publicId).toContain(`users/${user.userId}/avatar`)
+    const court = await mine(user.accessToken, PNG, '?kind=court')
+    expect(court.json().data.publicId).toContain(`users/${user.userId}/court`)
+  })
+
+  it('needs a login and rejects bad kinds and non-images', async () => {
+    const user = await signupVerified(app)
+    expect((await mine(undefined, PNG)).statusCode).toBe(401)
+    expect((await mine(user.accessToken, PNG, '?kind=logo')).statusCode).toBe(400)
+    const bad = await mine(user.accessToken, Buffer.from('<?php echo 1; ?> not an image'))
+    expect(bad.json().code).toBe('UNSUPPORTED_IMAGE')
+  })
+})

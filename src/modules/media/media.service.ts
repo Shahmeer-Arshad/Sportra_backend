@@ -2,10 +2,10 @@ import { Cloudinary } from '../../lib/cloudinary'
 import { AppError, BadRequestError } from '../../utils/errors'
 import { sniffImage } from './media.domain'
 
-/** Checks the file, then stores it in Cloudinary under `<folder>/venues/<venueId>/<kind>`. */
+/** Checks the file, then stores it in Cloudinary under the folder the caller chose. */
 export function createMediaService(cloud: Cloudinary, rootFolder: string) {
   return {
-    async uploadImage(venueId: string, kind: string, file: Buffer, filename?: string) {
+    async uploadImage(folder: string, file: Buffer, filename?: string) {
       if (!cloud.enabled) {
         throw new AppError('Photo uploads are not set up', 503, true, 'UPLOADS_NOT_CONFIGURED')
       }
@@ -14,10 +14,7 @@ export function createMediaService(cloud: Cloudinary, rootFolder: string) {
         throw new BadRequestError('Only JPEG, PNG or WebP images are allowed', 'UNSUPPORTED_IMAGE')
       }
       try {
-        return await cloud.upload(file, {
-          folder: `${rootFolder}/venues/${venueId}/${kind}`,
-          filename,
-        })
+        return await cloud.upload(file, { folder: `${rootFolder}/${folder}`, filename })
       } catch {
         throw new AppError('Could not store the photo, try again', 502, true, 'UPLOAD_FAILED')
       }

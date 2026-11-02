@@ -48,6 +48,7 @@ export const API_MAP: readonly Row[] = [
   ['POST', '/api/v1/me/whatsapp-consent', 'profile.consent', 'Change WhatsApp consent'],
   ['POST', '/api/v1/me/email-change', 'profile.email_change', 'Start an email change'],
   ['POST', '/api/v1/me/email-change/confirm', 'profile.email_change', 'Confirm an email change'],
+  ['POST', '/api/v1/me/uploads', 'profile.upload', 'Upload a photo (avatar, venue or court)'],
   ['GET', '/api/v1/me/sessions', 'session.read', 'List my sessions'],
   ['POST', '/api/v1/me/logout-all', 'session.revoke', 'Log out everywhere'],
   ['GET', '/api/v1/me/venues', 'venue.list_own', 'List my venues'],

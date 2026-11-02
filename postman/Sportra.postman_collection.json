@@ -1204,6 +1204,53 @@
               ]
             }
           }
+        },
+        {
+          "name": "Upload my photo (avatar / venue / court)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try { const j = pm.response.json(); if (j.data && j.data.url) { pm.collectionVariables.set('photoUrl', j.data.url); } } catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/uploads?kind=avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "uploads"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "avatar"
+                }
+              ]
+            },
+            "description": "Body > form-data, key 'file' (type File): a JPEG, PNG or WebP up to 5 MB. Any signed-in user. kind = avatar (default), venue or court. The file is stored under your own folder and the response returns data.url; this call does not save the link anywhere. Send it yourself in 'Update my profile', 'Update venue' (photos) or 'Update court' (images). The link is saved as photoUrl.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
         }
       ],
       "auth": {

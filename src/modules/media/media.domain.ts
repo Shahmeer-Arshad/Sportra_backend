@@ -9,3 +9,7 @@ export function sniffImage(b: Buffer): ImageType | null {
   if (b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') return 'webp'
   return null
 }
+
+/** Cloudinary folders (relative to the root folder) for the two upload entry points. */
+export const venueFolder = (venueId: string, kind: string) => `venues/${venueId}/${kind}`
+export const userFolder = (userId: string, kind: string) => `users/${userId}/${kind}`
