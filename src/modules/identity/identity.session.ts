@@ -2,7 +2,7 @@ import { User } from '@prisma/client'
 import { env } from '../../config/env'
 import { randomToken, sha256 } from '../../lib/crypto'
 import { uuidv7 } from '../../lib/id'
-import { AuthResult, RequestMeta, toPublicUser } from './identity.domain'
+import { AuthResult, RequestMeta, displayRole, toPublicUser } from './identity.domain'
 import { IdentityRepository } from './identity.repository'
 
 export type SignAccess = (payload: {
@@ -33,11 +33,15 @@ export function createSessionService(repo: IdentityRepository, signAccess: SignA
         email: user.email,
         role: user.platformRole as 'USER' | 'PLATFORM_ADMIN',
       })
+      const roles = await repo.activeRoleCodes(user.id)
       return {
         accessToken,
         refreshToken: token,
         refreshExpiresAt: expiresAt,
-        user: toPublicUser(user),
+        user: {
+          ...toPublicUser(user),
+          platformRole: displayRole(user.platformRole, roles),
+        },
       }
     },
   }

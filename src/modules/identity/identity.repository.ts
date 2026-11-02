@@ -97,6 +97,13 @@ function queries(db: Db) {
         where: { userId, isActive: true },
         select: { venueId: true, role: true },
       }),
+    activeRoleCodes: async (userId: string) =>
+      (
+        await db.userRole.findMany({
+          where: { userId, isActive: true },
+          select: { role: { select: { code: true } } },
+        })
+      ).map((r) => r.role.code),
     countActiveMemberships: (userId: string) =>
       db.venueMembership.count({ where: { userId, isActive: true } }),
     venueStaff: (venueId: string) =>

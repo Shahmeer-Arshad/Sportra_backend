@@ -12,6 +12,7 @@ import {
   lockDurationMs,
   normalizeEmail,
   RequestMeta,
+  displayRole,
   toPublicUser,
 } from './identity.domain'
 
@@ -145,7 +146,12 @@ export function createIdentityService({ repo, otp, session }: IdentityDeps) {
     // ───────── profile ─────────
     async getMe(userId: string) {
       const u = await repo.userByIdOrThrow(userId)
-      return { ...toPublicUser(u), memberships: await repo.activeMemberships(userId) }
+      const roles = await repo.activeRoleCodes(userId)
+      return {
+        ...toPublicUser(u),
+        platformRole: displayRole(u.platformRole, roles),
+        memberships: await repo.activeMemberships(userId),
+      }
     },
 
     listSessions: (userId: string) => repo.activeSessions(userId),

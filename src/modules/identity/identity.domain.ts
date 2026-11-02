@@ -50,6 +50,14 @@ export const toPublicUser = (u: User): PublicUser => ({
   whatsappOptIn: u.whatsappOptIn,
 })
 
+const DISPLAY_ORDER = ['GROUND_OWNER', 'TOURNAMENT_ORGANIZER'] as const
+
+/** What `platformRole` shows in responses: PLATFORM_ADMIN, GROUND_OWNER, TOURNAMENT_ORGANIZER or USER. */
+export const displayRole = (platformRole: string, roles: string[]): string =>
+  platformRole === 'PLATFORM_ADMIN'
+    ? platformRole
+    : (DISPLAY_ORDER.find((r) => roles.includes(r)) ?? 'USER')
+
 /** Every 10 failed logins lock the account: 15 min, doubling each time, max 24 h. 0 = no lock. */
 export const lockDurationMs = (failedCount: number) =>
   failedCount % LOCK_AFTER_FAILURES === 0
