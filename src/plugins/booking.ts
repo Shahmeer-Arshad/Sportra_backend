@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import { env } from '../config/env'
 import { BookingModule, createBookingModule } from '../modules/booking/booking.module'
 
 /** The booking module plus `idle()`: waits for slot syncs and outage jobs started in the background (tests, shutdown). */
@@ -17,21 +18,22 @@ const CATALOG_URL =
 
 /**
  * Builds the booking services and keeps slots in step with the venue catalogue: after a request
- * that changes courts, prices, hours or verification, the venue's slots are regenerated in the
- * background (idempotent). The nightly job in the worker covers anything missed.
+ * that changes courts, prices, hours or verification, the venue's slots are regenerated
+ * (idempotent): in the background for owner edits, before the answer for admin approvals. The nightly job in the worker covers anything missed.
  */
 const bookingPlugin = fp(async (app: FastifyInstance) => {
   const booking = createBookingModule(app.prisma, app.hotLane, { log: app.log })
   const slots = booking.slots
 
   const pending = new Set<Promise<void>>()
-  const state = new Map<string, { running: boolean; dirty: boolean }>()
-  function syncVenue(venueId: string) {
+  const state = new Map<string, { running: boolean; dirty: boolean; done?: Promise<void> }>()
+  /** Starts (or queues) a slot sync for the venue; the returned promise settles when it has caught up. */
+  function syncVenue(venueId: string): Promise<void> {
     const s = state.get(venueId) ?? { running: false, dirty: false }
     state.set(venueId, s)
     if (s.running) {
       s.dirty = true
-      return
+      return s.done as Promise<void>
     }
     s.running = true
     const p: Promise<void> = (async () => {
@@ -47,7 +49,9 @@ const bookingPlugin = fp(async (app: FastifyInstance) => {
       s.running = false
       pending.delete(p)
     })
+    s.done = p
     pending.add(p)
+    return p
   }
 
   // onSend runs before the response leaves, so the sync is registered by the time the caller sees it
@@ -60,7 +64,13 @@ const bookingPlugin = fp(async (app: FastifyInstance) => {
       const p = req.params as { venueId?: string; id?: string }
       // approving a change request: the route id is the request, the controller names the venue
       const venueId = (req as { syncVenueId?: string }).syncVenueId ?? p.venueId ?? p.id
-      if (venueId) syncVenue(venueId)
+      if (venueId) {
+        const synced = syncVenue(venueId)
+        // an admin approval waits for the slots (at most SLOT_SYNC_WAIT_MS), so a normal venue is
+        // bookable the moment the call returns; a very large one keeps syncing in the background
+        if (env.SLOT_SYNC_WAIT_MS > 0 && /^\/api\/v1\/admin\//.test(req.routeOptions.url ?? ''))
+          await Promise.race([synced, new Promise((r) => setTimeout(r, env.SLOT_SYNC_WAIT_MS))])
+      }
     }
     return payload
   })

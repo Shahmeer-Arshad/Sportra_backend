@@ -13,7 +13,7 @@ export const payAtVenueMediator =
   async (userId: string, bookingId: string, key: string) => {
     const b0 = await ownedBooking(repo, userId, bookingId)
     const settings = await repo.bookingSettings(b0.venue_id)
-    if (!settings?.payAtVenueEnabled)
+    if (!(settings?.payAtVenueEnabled ?? env.PAY_AT_VENUE_DEFAULT))
       throw new ForbiddenError(
         'This venue does not take pay-at-venue bookings',
         'PAY_AT_VENUE_DISABLED',

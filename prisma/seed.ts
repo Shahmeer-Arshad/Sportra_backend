@@ -5,12 +5,16 @@ import { uuidv7 } from '../src/lib/id'
 import { createHotLane } from '../src/lib/hotlane'
 import { createBookingModule } from '../src/modules/booking/booking.module'
 import { roleQueries } from '../src/modules/rbac/rbac.queries'
+import { seedShowcase } from './seed-demo'
 import { syncRbac } from './seed-rbac'
 
 /**
  * Dev seed (safe to run again): an admin, areas for Karachi and Lahore, one demo owner and 20
  * verified demo venues with courts and prices, then bookable slots for the whole horizon (Phase 2).
  * Demo venues are skipped if they already exist; slot generation is idempotent.
+ *
+ * It also runs `seed-demo.ts`: test accounts for every role, venues in every review state and sample
+ * bookings (skipped when NODE_ENV=production).
  *
  * `--admin-only` (npm run db:seed:admin) creates just the roles/permissions and the admin account:
  * no areas, demo owner or demo venues. Use it for a real database.
@@ -190,7 +194,14 @@ async function main() {
   // Phase 2: slots for every verified venue (what the nightly worker job does)
   const gen = await createBookingModule(prisma, createHotLane(null)).slots.generateAll()
   console.log(`✅ Slots ready for ${gen.venues} verified venues (${gen.inserted} new hours)`)
-  console.log('✅ Seed completed. Demo owner: demo.owner@sportra.local / Owner@12345')
+  await seedShowcase(prisma, admin.id)
+  console.log(`✅ Seed completed. Accounts (dev only):
+   admin      ${adminEmail} / ${adminPassword}   (asks for an e-mailed code)
+   owner      demo.owner@sportra.local / Owner@12345   (20 approved venues)
+   owner 2    owner2@sportra.local / Owner@12345   (showcase venues in every review state)
+   manager    manager@sportra.local / Staff@12345     front desk  frontdesk@sportra.local / Staff@12345
+   organizer  organizer@sportra.local / Staff@12345
+   players    player1..3@sportra.local / Player@12345`)
 }
 
 main()

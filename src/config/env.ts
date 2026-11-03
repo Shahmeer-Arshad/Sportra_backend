@@ -37,8 +37,15 @@ const envSchema = z.object({
   // Booking (Phase 2)
   HOLD_SECONDS: z.coerce.number().int().min(1).default(300), // a hold lasts exactly 5 minutes
   SLOT_HORIZON_DAYS: z.coerce.number().int().min(1).max(365).default(60),
+  // An admin approval waits this long for the venue's slots to be built (0 = do not wait)
+  SLOT_SYNC_WAIT_MS: z.coerce.number().int().min(0).default(2000),
   MAX_PENDING_HOLDS: z.coerce.number().int().min(1).default(2),
   MAX_UNPAID_BOOKINGS: z.coerce.number().int().min(1).default(1),
+  // Until online payment exists a hold can only be confirmed as pay-at-venue; owners can still switch it off
+  PAY_AT_VENUE_DEFAULT: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   NO_SHOW_AFTER_MINUTES: z.coerce.number().int().min(1).default(20),
   SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(60),
   // Photo uploads (Cloudinary). Leave the three credentials empty to switch uploads off (503).

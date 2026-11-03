@@ -19,7 +19,7 @@ export function createStaffService(repo: BookingQueries) {
     const s = await repo.bookingSettings(venueId)
     return {
       venueId,
-      payAtVenueEnabled: s?.payAtVenueEnabled ?? false,
+      payAtVenueEnabled: s?.payAtVenueEnabled ?? env.PAY_AT_VENUE_DEFAULT,
       holdSeconds: env.HOLD_SECONDS,
       horizonDays: env.SLOT_HORIZON_DAYS,
     }
@@ -102,7 +102,7 @@ export function createStaffService(repo: BookingQueries) {
         action: 'BOOKING_SETTINGS_CHANGED',
         entity: 'booking_settings',
         entityId: venueId,
-        before: { payAtVenueEnabled: before?.payAtVenueEnabled ?? false },
+        before: { payAtVenueEnabled: before?.payAtVenueEnabled ?? env.PAY_AT_VENUE_DEFAULT },
         after: input,
         ip: actor.ip,
       })

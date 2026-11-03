@@ -19,3 +19,5 @@ process.env.ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN ?? '15
 process.env.REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN ?? '7d'
 process.env.NODE_ENV = 'test'
 process.env.BCRYPT_COST = '4'
+// Tests wait for slot syncs themselves (app.booking.idle()); approvals must not block on them
+process.env.SLOT_SYNC_WAIT_MS = '0'

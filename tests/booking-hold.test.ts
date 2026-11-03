@@ -428,20 +428,34 @@ describe('releasing and expiry', () => {
 })
 
 describe('pilot mode: reserve and pay at venue', () => {
-  it('is off by default', async () => {
+  it('is on by default, and an owner can switch it off', async () => {
     const f = await buildFixture(app)
+    const settings = `/api/v1/pos/venues/${f.venueId}/booking-settings`
+    expect(
+      (await call(app, 'GET', settings, f.owner.accessToken)).json().data.payAtVenueEnabled,
+    ).toBe(true)
     const p = await makeUser(app)
-    const [a] = await pickSlots(app.prisma, f.courtId, 1)
-    const h = (await holdHours(app, p.accessToken, f.courtId, [a.id])).json().data
+    const [a, b] = await pickSlots(app.prisma, f.courtId, 2)
+    const h1 = (await holdHours(app, p.accessToken, f.courtId, [a.id])).json().data
+    const ok = await callKeyed(
+      app,
+      'POST',
+      `/api/v1/bookings/${h1.id}/confirm-pay-at-venue`,
+      p.accessToken,
+    )
+    expect(ok.statusCode).toBe(200)
+
+    await call(app, 'PATCH', settings, f.owner.accessToken, { payAtVenueEnabled: false })
+    const h2 = (await holdHours(app, p.accessToken, f.courtId, [b.id])).json().data
     const r = await callKeyed(
       app,
       'POST',
-      `/api/v1/bookings/${h.id}/confirm-pay-at-venue`,
+      `/api/v1/bookings/${h2.id}/confirm-pay-at-venue`,
       p.accessToken,
     )
     expect(r.statusCode).toBe(403)
     expect(r.json().code).toBe('PAY_AT_VENUE_DISABLED')
-    expect((await slotRow(a.id)).status).toBe('HELD')
+    expect((await slotRow(b.id)).status).toBe('HELD')
   })
 
   it('only the owner can switch it on, and the change is audited', async () => {

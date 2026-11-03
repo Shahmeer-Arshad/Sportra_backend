@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sportra API",
-    "description": "All Sportra backend endpoints. Import, then: (1) run 'Search venues'/'Availability grid' for data, (2) log in as player / owner / admin (Auth folder) - tokens are saved automatically into the collection variables and each folder uses the right one. Login codes arrive by e-mail (dev: MailHog http://localhost:58025); put the code in the otpCode variable. Base URL is the baseUrl variable (default http://localhost:3000). Bookings use tomorrow's date; set the dateOverride variable (YYYY-MM-DD) to book another day, for example today to test check-in (check-in only opens shortly before a slot starts).\n\nVenue review flow (owner / admin): Owner: Create venue (photos) > Add court (images) > Add pricing rule > Submit for review. Admin: Venues to review > Open review (you hold it) > Venue diff since last submission > Decide review (APPROVED / CHANGES_REQUESTED / REJECTED, the owner gets an e-mail). On a live venue, risky owner edits (new court, price bands, hours) answer 202 and appear in 'Venue changes waiting for approval'; use Approve / Reject venue change. Suspend: 'Suspend venue - pause online' or 'Suspend preview' then 'Suspend venue - STOP ALL'. A rejected venue can be copied with 'Copy rejected venue as new draft'. Photos: 'Upload venue photo' / 'Upload court photo' (form-data file) return a link to save in photos / images.",
+    "description": "All Sportra backend endpoints. Import, then: (1) run 'Search venues'/'Availability grid' for data, (2) log in as player / owner / admin (Auth folder) - tokens are saved automatically into the collection variables and each folder uses the right one. Login codes arrive by e-mail (dev: MailHog http://localhost:58025); put the code in the otpCode variable. Base URL is the baseUrl variable (default http://localhost:3000). Bookings use tomorrow's date; set the dateOverride variable (YYYY-MM-DD) to book another day, for example today to test check-in (check-in only opens shortly before a slot starts).\n\nVenue review flow (owner / admin): Owner: Create venue (photos) > Add court (images) > Add pricing rule > Submit for review. Admin: Venues to review > Open review (you hold it) > Venue diff since last submission > Decide review (APPROVED / CHANGES_REQUESTED / REJECTED, the owner gets an e-mail). On a live venue, risky owner edits (new court, price bands, hours) answer 202 and appear in 'Venue changes waiting for approval'; use Approve / Reject venue change. Suspend: 'Suspend venue - pause online' or 'Suspend preview' then 'Suspend venue - STOP ALL'. A rejected venue can be copied with 'Copy rejected venue as new draft'. Photos: 'Upload venue photo' / 'Upload court photo' (form-data file) return a link to save in photos / images. Booking journey: the folder '03b Booking journey - player' runs the whole player flow (search, venue page, free hours, hold, confirm, pass, cancel) in order with nothing to fill in.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1526,6 +1526,647 @@
               "type": "noauth"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "03b Booking journey - player (run top to bottom)",
+      "description": "The whole player booking flow in order, nothing to fill in by hand: 1 log in > 2-3 find approved venues > 4 venue page with courts and prices > 5 free hours (picked for you) > 6 hold for 5 minutes > 7 confirm (pay at venue) > 8-10 detail, QR pass, my bookings > 11-12 cancel. Run it with the Collection Runner or send each request one after the other. It only reads your playerEmail / playerPassword / dateOverride / baseUrl variables and keeps its own state in variables starting with 'flow', so your other variables stay as they are. Needs: a player account with a phone number, and at least one approved venue with a court (the demo seed has 20). To book again, start at step 5.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{playerToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// booking date: dateOverride if you set one, otherwise tomorrow (does not touch your variables)",
+              "const f = (x) => x.toISOString().slice(0, 10);",
+              "const day = pm.collectionVariables.get('dateOverride') || f(new Date(Date.now() + 86400000));",
+              "pm.collectionVariables.set('flowDate', day);"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Log in as the player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Endpoint: POST /api/v1/public/auth/login. Uses the playerEmail / playerPassword variables. Saves playerToken, which every later step in this folder uses. A plain player does not need an e-mail code. The player account must exist and have a phone number (see 'Register - player' in the Auth folder).",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{playerEmail}}\",\n  \"password\": \"{{playerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('logged in', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (j.accessToken) {",
+                  "  pm.collectionVariables.set('playerToken', j.accessToken);",
+                  "  if (j.data && j.data.user) pm.collectionVariables.set('playerUserId', j.data.user.id);",
+                  "  console.log('Logged in as', j.data.user.email, '/', j.data.user.platformRole);",
+                  "} else if (j.mfaRequired) {",
+                  "  console.log('This account needs a login code (staff / new device): put it in otpCode and run Auth > Verify login OTP.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Browse areas (optional)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/areas?city=Karachi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Karachi"
+                }
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/public/areas?city=Karachi. Zones for the 'no location permission' search. Use an area id as the areaId filter in step 3.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('areas listed', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Find venues (search)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/search?lat=24.8607&lng=67.0011&radiusKm=20&sort=distance&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "24.8607"
+                },
+                {
+                  "key": "lng",
+                  "value": "67.0011"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "distance"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/public/venues/search. Only approved (VERIFIED) and active venues with at least one active court are ever returned. Change lat / lng / radiusKm (3, 5, 10, 20), sport, surface, amenities or q to filter. Saves the venues found and selects the first one (flowVenueId / flowVenueSlug). If a venue has no free hours in step 5 the script moves to the next venue for you.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('search works', () => pm.expect(pm.response.code).to.eql(200));",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  const items = (j.data && j.data.items) || [];",
+                  "  pm.test('at least one approved venue found', () => pm.expect(items.length).to.be.above(0));",
+                  "  if (items.length) {",
+                  "    pm.collectionVariables.set('flowVenueList', JSON.stringify(items.map(v => ({ id: v.id, slug: v.slug || v.id, name: v.name }))));",
+                  "    pm.collectionVariables.set('flowVenueIdx', '0');",
+                  "    pm.collectionVariables.set('flowVenueId', items[0].id);",
+                  "    pm.collectionVariables.set('flowVenueSlug', items[0].slug || items[0].id);",
+                  "    console.log('Venues:', items.map(v => v.name + ' (from Rs ' + (v.priceFromMinor / 100) + ')').join(' | '));",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Venue page (courts, prices, policy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/{{flowVenueSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "{{flowVenueSlug}}"
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/public/venues/:idOrSlug. Photos, address, directions link, amenities, every active court (sport, surface, images) with its price bands, and the cancellation policy. Only approved venues answer; anything else is 404.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('venue page loaded', () => pm.expect(pm.response.code).to.eql(200));",
+                  "try {",
+                  "  const v = pm.response.json().data;",
+                  "  console.log(v.name, '-', v.address, '| cancellation:', v.cancellationPolicy.summary);",
+                  "  (v.courts || []).forEach(c => console.log('Court:', c.name, c.sport, c.surface, '| bands:', c.priceBands.map(b => b.name + ' ' + b.fromTime + '-' + b.toTime + ' Rs ' + b.priceMinor / 100).join(', ')));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Availability grid (pick free hours)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/venues/{{flowVenueSlug}}/availability?date={{flowDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "venues",
+                "{{flowVenueSlug}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{flowDate}}"
+                }
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/public/venues/:idOrSlug/availability?date=YYYY-MM-DD (add &courtId= for one court). Every hour of the day for every active court with status AVAILABLE / HELD / BOOKED / BLOCKED, price and tag. The date is tomorrow, or your dateOverride variable. The script picks the first free hour (plus the next one on the same court when free) and saves flowCourtId and flowSlotIds. If this venue has no free hours it switches to the next venue found in step 3: just send this request again.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('grid loaded', () => pm.expect(pm.response.code).to.eql(200));",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  const free = ((j.data && j.data.slots) || []).filter(s => s.status === 'AVAILABLE');",
+                  "  pm.collectionVariables.set('flowSlotIds', '[]');",
+                  "  if (free.length) {",
+                  "    const first = free[0];",
+                  "    const next = free.find(s => s.courtId === first.courtId && new Date(s.startAt).getTime() === new Date(first.endAt).getTime());",
+                  "    const ids = next ? [first.id, next.id] : [first.id];",
+                  "    pm.collectionVariables.set('flowCourtId', first.courtId);",
+                  "    pm.collectionVariables.set('flowSlotIds', JSON.stringify(ids));",
+                  "    const court = (j.data.courts || []).find(c => c.id === first.courtId);",
+                  "    const total = first.priceMinor + (next ? next.priceMinor : 0);",
+                  "    console.log('Picked', ids.length, 'hour(s) on', court ? court.name : first.courtId, 'from', first.startAt, '- total Rs', total / 100);",
+                  "    pm.test('free hours found', () => pm.expect(ids.length).to.be.above(0));",
+                  "  } else {",
+                  "    const list = JSON.parse(pm.collectionVariables.get('flowVenueList') || '[]');",
+                  "    const idx = Number(pm.collectionVariables.get('flowVenueIdx') || '0') + 1;",
+                  "    if (idx < list.length) {",
+                  "      pm.collectionVariables.set('flowVenueIdx', String(idx));",
+                  "      pm.collectionVariables.set('flowVenueSlug', list[idx].slug);",
+                  "      pm.collectionVariables.set('flowVenueId', list[idx].id);",
+                  "      console.log('No free hours here. Switched to', list[idx].name, '- send this request again.');",
+                  "    } else {",
+                  "      console.log('No free hours at any venue found. Try another date (dateOverride) or run step 3 again.');",
+                  "    }",
+                  "    pm.test('free hours found (send again if the venue was switched)', () => pm.expect(false).to.be.true);",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Hold the hours (5 minutes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "A fresh UUID on every send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "holds"
+              ]
+            },
+            "description": "Endpoint: POST /api/v1/bookings/holds (needs login, Idempotency-Key header is added for you). Holds 1 to 4 consecutive hours on one court for 5 minutes; nobody else can take them. The booking is PENDING_PAYMENT and the response has holdExpiresAt and secondsRemaining. If someone was faster the answer is 409 SLOT_UNAVAILABLE with nearby alternatives: go back to step 5. You can hold at most 2 bookings at a time. Your account needs a phone number (or add customerPhone to the body).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{flowCourtId}}\",\n  \"slotIds\": {{flowSlotIds}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('hold created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('flowBookingId', j.data.id);",
+                  "  pm.collectionVariables.set('flowBookingRef', j.data.ref);",
+                  "  console.log('Held', j.data.ref, '- total Rs', j.data.totalMinor / 100, '- seconds left', j.data.secondsRemaining);",
+                  "} else if (j.code === 'SLOT_UNAVAILABLE') {",
+                  "  console.log('Those hours were just taken. Alternatives:', JSON.stringify((j.details && j.details.alternatives) || []));",
+                  "} else if (j.code === 'PHONE_REQUIRED') {",
+                  "  console.log('Add a phone number: Update my profile (02 My account) or add \"customerPhone\" to this body.');",
+                  "} else if (j.code === 'TOO_MANY_HOLDS') {",
+                  "  console.log('You already hold 2 bookings: confirm, release or wait 5 minutes.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Confirm - pay at venue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "A fresh UUID on every send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}/confirm-pay-at-venue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}",
+                "confirm-pay-at-venue"
+              ]
+            },
+            "description": "Endpoint: POST /api/v1/bookings/:id/confirm-pay-at-venue (Idempotency-Key added for you). Turns the hold into a CONFIRMED booking: the hours become booked, you pay the full amount in cash at the venue (balanceDueMinor). Online payment is not built yet. Limits: 1 unpaid booking at a time; if the hold ran out you get 409 HOLD_EXPIRED (go back to step 6). A venue owner can switch pay-at-venue off (403 PAY_AT_VENUE_DISABLED)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('booking confirmed', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const items = (j.data && j.data.items) || [];",
+                  "  pm.collectionVariables.set('flowItemIds', JSON.stringify(items.map(i => i.id)));",
+                  "  console.log(j.data.ref, j.data.status, '- pay Rs', j.data.balanceDueMinor / 100, 'at the venue');",
+                  "} else if (j.code === 'UNPAID_LIMIT_REACHED') {",
+                  "  console.log('Finish or cancel your other unpaid booking first (step 12/13 or My bookings).');",
+                  "} else if (j.code === 'HOLD_EXPIRED') {",
+                  "  console.log('The 5 minute hold ran out. Go back to step 5 and hold again.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}"
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/bookings/:id. Status, hours with price per hour, total, balance due, cancellation cutoff, venue and court names."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('detail loaded', () => pm.expect(pm.response.code).to.eql(200));",
+                  "try { const b = pm.response.json().data; console.log(b.ref, b.status, b.startAt, '->', b.endAt, 'balance Rs', b.balanceDueMinor / 100); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. QR entry pass",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}/pass",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}",
+                "pass"
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/bookings/:id/pass. The signed token to show as a QR code at the venue gate (the booking ref is the manual fallback). Only works for a confirmed booking."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('pass issued', () => pm.expect(pm.response.code).to.eql(200));",
+                  "try { const t = pm.response.json().data.token; if (t) pm.collectionVariables.set('flowPassToken', t); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. My bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/bookings?tab=upcoming&limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "upcoming"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/me/bookings?tab=upcoming|past|cancelled&limit=&offset=. Everything this player has booked."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('list loaded', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Cancel preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}/cancel-preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}",
+                "cancel-preview"
+              ]
+            },
+            "description": "Endpoint: GET /api/v1/bookings/:id/cancel-preview[?itemIds=]. Shows exactly what would be refunded or forfeited before you cancel. Leave itemIds out for the whole booking, or add itemIds=<id> for single hours (ids are in the booking detail)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('preview loaded', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Cancel the booking (whole)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "A fresh UUID on every send (cancel calls need a UUID)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}",
+                "cancel"
+              ]
+            },
+            "description": "Endpoint: POST /api/v1/bookings/:id/cancel (Idempotency-Key = the cancellation id, added for you). With no itemIds every hour is cancelled and the hours go back on sale at once. To cancel only some hours add \"itemIds\": [\"<id>\"]. Sending the same key twice returns the first result.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Plans changed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('cancelled', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alt: Release the hold (instead of step 7)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{flowBookingId}}/hold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{flowBookingId}}",
+                "hold"
+              ]
+            },
+            "description": "Endpoint: DELETE /api/v1/bookings/:id/hold. Gives the held hours back right away instead of waiting 5 minutes. Use it instead of step 7 when the player changes their mind."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('hold released', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
