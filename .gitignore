@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Lockfile
 package-lock.json
+
+# Personal docker compose (local copy, never pushed)
+docker-compose.local.yml
