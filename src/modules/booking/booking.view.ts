@@ -68,6 +68,7 @@ export function bookingJson(
     balanceDueMinor: num(b.balance_due_minor),
     paymentMode: b.payment_mode,
     paymentStatus: b.payment_status,
+    paymentMethod: b.payment_method,
     cancellationCutoffHours: b.cancellation_cutoff_hours,
     holdExpiresAt: holdLive ? b.hold_expires_at!.toISOString() : null,
     secondsRemaining: holdLive

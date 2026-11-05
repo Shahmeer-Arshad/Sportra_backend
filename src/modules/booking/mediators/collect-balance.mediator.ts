@@ -1,5 +1,6 @@
 import { HotLane } from '../../../lib/hotlane'
 import { hashRequest } from '../../../lib/idempotency'
+import { todayIn } from '../../../lib/time'
 import { ConflictError, NotFoundError } from '../../../utils/errors'
 import { publishBookingUpdate } from '../booking.realtime'
 import { BookingRepository } from '../booking.repository'
@@ -36,6 +37,20 @@ export const collectBalanceMediator =
             balanceDueMinor: due,
           })
         await q.collectCash(bookingId, amountMinor, due - amountMinor)
+        if (amountMinor > 0) {
+          const [now, venue] = await Promise.all([q.clock(), q.venueById(venueId)])
+          await q.postLedgerEntry({
+            venueId,
+            // the day the cash actually arrived (now), not the booking's own slot date
+            businessDate: todayIn(venue?.timezone, now),
+            entryType: 'CASH_COLLECTED',
+            direction: 'CREDIT',
+            amountMinor: BigInt(amountMinor),
+            referenceType: 'BOOKING',
+            referenceId: bookingId,
+            recordedBy: actor.id,
+          })
+        }
         await q.emit({
           type: 'balance.collected',
           routingKey: 'balance.collected',

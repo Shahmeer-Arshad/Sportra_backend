@@ -15,6 +15,7 @@ export interface BookingRowRaw {
   status: string
   payment_mode: string
   payment_status: string
+  payment_method: string
   start_at: Date
   end_at: Date
   business_date: Date
@@ -59,7 +60,7 @@ export interface ItemRowRaw {
 }
 
 export const BOOKING_COLS = Prisma.sql`id, ref, venue_id, court_id, user_id, source, customer_name, customer_phone,
-  customer_email, headcount, status, payment_mode, payment_status, start_at, end_at, business_date, total_minor,
+  customer_email, headcount, status, payment_mode, payment_status, payment_method, start_at, end_at, business_date, total_minor,
   original_total_minor, deposit_minor, online_paid_minor, cash_collected_minor, refunded_minor, forfeited_minor,
   refund_pending_minor, balance_due_minor, slot_ids, hold_id, hold_expires_at, cancellation_cutoff_hours,
   cancelled_at, cancelled_by, cancel_reason, checked_in_at, no_show_at, version, created_at`

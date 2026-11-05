@@ -7,6 +7,7 @@ import { adminQueries } from './repositories/admin.queries'
 import { bookingQueries } from './repositories/booking.queries'
 import { cancellationQueries } from './repositories/cancellation.queries'
 import { generationQueries } from './repositories/generation.queries'
+import { ledgerQueries } from './repositories/ledger.queries'
 import { outageQueries } from './repositories/outage.queries'
 import { slotQueries } from './repositories/slot.queries'
 
@@ -20,6 +21,7 @@ function queries(db: Db) {
     ...generationQueries(db),
     ...outageQueries(db),
     ...adminQueries(db),
+    ...ledgerQueries(db),
   }
 }
 export type BookingQueries = ReturnType<typeof queries>

@@ -3748,6 +3748,62 @@
           }
         },
         {
+          "name": "Day summary (cash drawer tiles)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/day-summary?date={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "day-summary"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{today}}"
+                }
+              ]
+            },
+            "description": "Live-grid header tiles: booked/total hours, cash today, still to collect, cash in drawer, arriving next, bookings-today split. Same endpoint the owner Home page reuses."
+          }
+        },
+        {
+          "name": "Occupancy (My Grounds card)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/occupancy?days=7",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "occupancy"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            },
+            "description": "Rolling N-day booked/total hours and percentage, for the \"X% booked this week\" line on a My Grounds card."
+          }
+        },
+        {
           "name": "Booking detail",
           "request": {
             "method": "GET",
@@ -4284,6 +4340,103 @@
                 "blocklist",
                 "{{blockedPhone}}"
               ]
+            }
+          }
+        },
+        {
+          "name": "Close today's cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/closings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "closings"
+              ]
+            },
+            "description": "Records the counted cash drawer amount; expected cash and variance are always computed server-side from the ledger, never trusted from the client. 409 if the day is already closed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessDate\": \"{{today}}\",\n  \"countedCashMinor\": 7630000,\n  \"notes\": \"Counted at close, gave Rs 500 change from the drawer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Closing - get for a day",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/closings/{{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "closings",
+                "{{today}}"
+              ]
+            },
+            "description": "The persisted closing record for a business date, or null if that day has not been closed yet."
+          }
+        },
+        {
+          "name": "Closing - reopen (owner only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pos/venues/{{venueId}}/closings/{{today}}/reopen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pos",
+                "venues",
+                "{{venueId}}",
+                "closings",
+                "{{today}}",
+                "reopen"
+              ]
+            },
+            "description": "Only the venue Owner can reopen a closed day. Requires a reason; audited.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Need to add a missed walk-in from tonight\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }

@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from 'fastify'
 import { HotLane } from '../../lib/hotlane'
 import { createAdminService, RealtimeStats } from './booking.admin.service'
 import { createAvailabilityService } from './booking.availability.service'
+import { createClosingService } from './booking.closing.service'
 import { createBookingRepository } from './booking.repository'
 import { createBookingService } from './booking.service'
 import { createSlotService } from './booking.slot.service'
@@ -11,6 +12,7 @@ import { adminOverrideMediator } from './mediators/admin-override.mediator'
 import { blockSlotsMediator } from './mediators/block-slots.mediator'
 import { cancelBookingMediator } from './mediators/cancel-booking.mediator'
 import { checkInMediator } from './mediators/check-in.mediator'
+import { closeDayMediator } from './mediators/close-day.mediator'
 import { collectBalanceMediator } from './mediators/collect-balance.mediator'
 import { createHoldMediator } from './mediators/create-hold.mediator'
 import { createHoldSweeper } from './mediators/hold-sweeper'
@@ -47,6 +49,7 @@ export function createBookingModule(
     staff: createStaffService(repo),
     availability: createAvailabilityService(repo),
     admin: createAdminService(repo, () => stats()),
+    closing: createClosingService(repo),
 
     // player use-cases
     createHold: createHoldMediator(repo, hotLane, sweeper),
@@ -62,6 +65,7 @@ export function createBookingModule(
     checkIn: checkInMediator(repo, hotLane),
     collectBalance: collectBalanceMediator(repo, hotLane),
     noShow: noShowMediator(repo, hotLane),
+    closeDay: closeDayMediator(repo),
 
     // admin use-cases
     override: adminOverrideMediator(repo, hotLane, cancel),

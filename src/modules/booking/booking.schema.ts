@@ -20,6 +20,16 @@ export const cancelBody = {
   type: 'object',
   properties: { itemIds: uuidList(1, 12), reason: { type: 'string', maxLength: 300 } },
 }
+// Separate from cancelBody on purpose: a player must never be able to claim a cash refund on
+// their own cancellation (that's only meaningful, and only trusted, from the POS staff route).
+export const staffCancelBody = {
+  type: 'object',
+  properties: {
+    itemIds: uuidList(1, 12),
+    reason: { type: 'string', maxLength: 300 },
+    cashRefundedMinor: { type: 'integer', minimum: 1, maximum: 100000000 },
+  },
+}
 
 // Ajv runs with removeAdditional:'all', so every path parameter must be listed or it is stripped
 export const idParams = {
@@ -68,6 +78,8 @@ const staffBookingProps = {
   customerPhone: phone,
   cashCollectedMinor: { type: 'integer', minimum: 0, maximum: 100000000 },
   headcount: { type: 'integer', minimum: 1, maximum: 100 },
+  // BANK_TRANSFER/FREE never post to the cash ledger; FREE always comps the full price.
+  method: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'FREE'], default: 'CASH' },
 }
 export const walkInBody = {
   type: 'object',
@@ -84,7 +96,9 @@ export const dayListQuery = {
   type: 'object',
   properties: {
     date,
+    range: { type: 'string', enum: ['today', 'tomorrow', 'week', 'all'] },
     status: { type: 'string', maxLength: 200 },
+    source: { type: 'string', maxLength: 50 }, // comma list: APP,WALKIN,MANUAL,TOURNAMENT
     q: { type: 'string', minLength: 1, maxLength: 60 },
     limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
     offset: { type: 'integer', minimum: 0, default: 0 },
@@ -131,7 +145,7 @@ export const outageBody = {
   required: ['courtIds', 'from', 'to', 'reason'],
   properties: {
     ...window,
-    reason: { type: 'string', enum: ['RAIN', 'POWER_OUTAGE', 'MAINTENANCE', 'OTHER'] },
+    reason: { type: 'string', enum: ['RAIN', 'POWER_OUTAGE', 'MAINTENANCE', 'PRIVATE_EVENT', 'OTHER'] },
     note: { type: 'string', maxLength: 300 },
   },
 }
@@ -153,6 +167,31 @@ export const blocklistBody = {
 export const blocklistParams = {
   type: 'object',
   properties: { phone: { type: 'string', maxLength: 20 } },
+}
+
+// ───────────── cash drawer / daily closing ─────────────
+export const dayCashSummaryQuery = { type: 'object', required: ['date'], properties: { date } }
+export const occupancyQuery = {
+  type: 'object',
+  properties: { days: { type: 'integer', minimum: 1, maximum: 90, default: 7 } },
+}
+export const closingBody = {
+  type: 'object',
+  required: ['businessDate', 'countedCashMinor'],
+  properties: {
+    businessDate: date,
+    countedCashMinor: { type: 'integer', minimum: 0, maximum: 1000000000 },
+    notes: { type: 'string', maxLength: 500 },
+  },
+}
+export const closingParams = {
+  type: 'object',
+  properties: { venueId: uuid, date },
+}
+export const reopenClosingBody = {
+  type: 'object',
+  required: ['reason'],
+  properties: { reason: { type: 'string', minLength: 3, maxLength: 300 } },
 }
 
 // ───────────── admin ─────────────

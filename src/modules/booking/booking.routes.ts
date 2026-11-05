@@ -99,7 +99,7 @@ export async function bookingRoutes(app: FastifyInstance) {
       p.post('/bookings/:id/no-show', pos(frontDesk, { params: S.idParams }), c.noShow)
       p.post(
         '/bookings/:id/cancel',
-        pos(manager, { params: S.idParams, body: S.cancelBody }),
+        pos(manager, { params: S.idParams, body: S.staffCancelBody }),
         c.cancelByVenue,
       )
 
@@ -123,6 +123,17 @@ export async function bookingRoutes(app: FastifyInstance) {
         '/blocklist/:phone',
         pos(manager, { params: S.blocklistParams }),
         c.removeFromBlocklist,
+      )
+
+      // cash drawer / daily closing
+      p.get('/day-summary', pos(frontDesk, { querystring: S.dayCashSummaryQuery }), c.daySummary)
+      p.get('/occupancy', pos(manager, { querystring: S.occupancyQuery }), c.occupancy)
+      p.post('/closings', pos(manager, { body: S.closingBody }), c.closeDay)
+      p.get('/closings/:date', pos(manager, { params: S.closingParams }), c.getClosing)
+      p.post(
+        '/closings/:date/reopen',
+        pos(owner, { params: S.closingParams, body: S.reopenClosingBody }),
+        c.reopenClosing,
       )
     },
     { prefix: '/api/v1/pos/venues/:venueId' },

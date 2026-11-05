@@ -15,6 +15,7 @@ import {
   lastCode,
   uniqueEmail,
   PASSWORD,
+  PHOTO,
 } from './helpers'
 
 let app: FastifyInstance
@@ -43,6 +44,31 @@ describe('owner onboarding', () => {
     const me = await call(app, 'GET', '/api/v1/me', owner.accessToken)
     expect(me.json().data.memberships).toEqual([{ venueId: v.venueId, role: 'OWNER' }])
     expect(v.venueId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/) // UUID v7
+  })
+
+  it('my-grounds dashboard: court count and pending-change count', async () => {
+    const owner = await signupVerified(app)
+    const admin = await createAdmin(app.prisma)
+    const admToken = await loginAdmin(app, admin.email)
+    const v = await buildVerifiedVenue(app, owner, admToken, { name: 'Dashboard Arena' })
+
+    const before = await call(app, 'GET', '/api/v1/me/venues', owner.accessToken)
+    const mineBefore = before.json().data.find((x: { id: string }) => x.id === v.venueId)
+    expect(mineBefore).toMatchObject({ courtCount: 1, pendingChangeCount: 0 })
+
+    // a second court on a VERIFIED venue is a queued change, not an immediate add
+    const res = await call(app, 'POST', `${P(v.venueId)}/courts`, owner.accessToken, {
+      name: 'Court 2',
+      sport: 'PADEL',
+      surface: 'GLASS_PADEL',
+      environment: 'INDOOR',
+      images: [PHOTO],
+    })
+    expect(res.statusCode).toBe(202)
+
+    const after = await call(app, 'GET', '/api/v1/me/venues', owner.accessToken)
+    const mineAfter = after.json().data.find((x: { id: string }) => x.id === v.venueId)
+    expect(mineAfter).toMatchObject({ courtCount: 1, pendingChangeCount: 1 })
   })
 
   it('needs a login and valid input', async () => {

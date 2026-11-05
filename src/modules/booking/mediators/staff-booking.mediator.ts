@@ -1,6 +1,7 @@
 import { HotLane } from '../../../lib/hotlane'
 import { uuidv7 } from '../../../lib/id'
 import { hashRequest } from '../../../lib/idempotency'
+import { todayIn } from '../../../lib/time'
 import { BadRequestError } from '../../../utils/errors'
 import { normalizePhone } from '../booking.domain'
 import { isoDate } from '../booking.inventory'
@@ -25,6 +26,8 @@ export interface StaffBookingInput {
   cashCollectedMinor?: number
   payLater?: boolean
   headcount?: number
+  /** CASH is the only method that moves the physical drawer; BANK_TRANSFER and FREE do not. */
+  method?: 'CASH' | 'BANK_TRANSFER' | 'FREE'
 }
 
 /** Front desk records a walk-in or a phone/WhatsApp booking; the hours are taken like an online hold. */
@@ -45,15 +48,20 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
     })
     assertVenueOperating(venue)
     const total = slots.reduce((a, s) => a + s.priceMinor, 0n)
-    // walk-in: cash collected defaults to the full price. manual: pay later keeps the balance open
+    const method = input.method ?? 'CASH'
+    // FREE always comps the full price (nothing owed, nothing in the drawer), regardless of any
+    // cashCollectedMinor/payLater the caller sent. Otherwise: walk-in defaults to the full price
+    // collected now, manual defaults to pay-later keeping the balance open.
     const cash =
-      kind === 'MANUAL' && input.payLater
-        ? 0n
-        : input.cashCollectedMinor !== undefined
-          ? BigInt(input.cashCollectedMinor)
-          : kind === 'WALKIN'
-            ? total
-            : 0n
+      method === 'FREE'
+        ? total
+        : kind === 'MANUAL' && input.payLater
+          ? 0n
+          : input.cashCollectedMinor !== undefined
+            ? BigInt(input.cashCollectedMinor)
+            : kind === 'WALKIN'
+              ? total
+              : 0n
     if (cash > total)
       throw new BadRequestError('Cash collected cannot exceed the price', 'CASH_EXCEEDS_TOTAL', {
         totalMinor: num(total),
@@ -73,6 +81,7 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
             p: input.customerPhone,
             cash: String(cash),
             l: !!input.payLater,
+            m: method,
           }),
         },
         async (q) => {
@@ -87,6 +96,7 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
           })
           const ordered = [...rows].sort((a, b) => a.start_at.getTime() - b.start_at.getTime())
           const totalMinor = ordered.reduce((a, r) => a + r.price_minor, 0n)
+          const businessDate = isoDate(ordered[0].business_date)
           const ref = await allocateBooking(q, {
             id: bookingId,
             venueId,
@@ -100,9 +110,10 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
             status: 'CONFIRMED',
             paymentMode: 'CASH_ONLY',
             paymentStatus: cash >= totalMinor ? 'PAID' : 'UNPAID',
+            paymentMethod: method,
             startAt: ordered[0].start_at,
             endAt: ordered[ordered.length - 1].end_at,
-            businessDate: isoDate(ordered[0].business_date),
+            businessDate,
             totalMinor,
             cutoffHours: venue.cancellationCutoffHours,
             slotIds: ordered.map((r) => r.id),
@@ -123,9 +134,23 @@ export const staffBookingMediator = (repo: BookingRepository, hotLane: HotLane) 
             startAt: ordered[0].start_at,
             endAt: ordered[ordered.length - 1].end_at,
           }
-          // ledger writes WALKIN_CASH from walkin.recorded (Phase 3)
           const type = kind === 'WALKIN' ? 'walkin.recorded' : 'booking.confirmed'
           await q.emit({ type, routingKey: type, producer: 'booking', data })
+          // Only physical cash moves the drawer: bank transfers and comps post no ledger entry.
+          // The ledger date is the day cash actually arrived (now), not the booking's own slot
+          // date — a MANUAL booking can be for a future date while cash is handed over today.
+          if (method === 'CASH' && cash > 0n) {
+            await q.postLedgerEntry({
+              venueId,
+              businessDate: todayIn(venue.timezone, now),
+              entryType: 'WALKIN_CASH',
+              direction: 'CREDIT',
+              amountMinor: cash,
+              referenceType: 'BOOKING',
+              referenceId: bookingId,
+              recordedBy: actor.id,
+            })
+          }
           await q.audit({
             actorId: actor.id,
             actorType: 'STAFF',

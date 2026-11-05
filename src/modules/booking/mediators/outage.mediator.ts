@@ -102,7 +102,7 @@ export const outageMediator = (
         courtIds: string[]
         from: string
         to: string
-        reason: 'RAIN' | 'POWER_OUTAGE' | 'MAINTENANCE' | 'OTHER'
+        reason: 'RAIN' | 'POWER_OUTAGE' | 'MAINTENANCE' | 'PRIVATE_EVENT' | 'OTHER'
         note?: string
       },
       key: string,

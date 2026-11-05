@@ -49,10 +49,17 @@ export function createVenueService(repo: VenueQueries) {
 
     async myVenues(userId: string) {
       const rows = await repo.memberships(userId)
-      const venues = await repo.venuesByIds(rows.map((r) => r.venueId))
+      const ids = rows.map((r) => r.venueId)
+      const [venues, courtCounts, pendingCounts] = await Promise.all([
+        repo.venuesByIds(ids),
+        repo.courtCountsByVenueIds(ids),
+        repo.pendingChangeCountsByVenueIds(ids),
+      ])
       return venues.map((v) => ({
         ...venueJson(v),
         myRole: rows.find((r) => r.venueId === v.id)!.role,
+        courtCount: courtCounts.get(v.id) ?? 0,
+        pendingChangeCount: pendingCounts.get(v.id) ?? 0,
       }))
     },
 

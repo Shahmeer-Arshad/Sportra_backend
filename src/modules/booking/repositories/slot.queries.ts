@@ -91,6 +91,33 @@ export function slotQueries(db: Db) {
          WHERE venue_id = ${venueId}::uuid AND business_date = ${date}::date
            ${courtId ? Prisma.sql`AND court_id = ${courtId}::uuid` : Prisma.empty}
          ORDER BY court_id, start_at`),
+
+    /**
+     * `totalSlots` is every slot cell that exists for the day (including blocked ones — they are
+     * real hours the venue could otherwise sell). `bookedSlots` only counts hours actually sold
+     * (BOOKED_APP/BOOKED_WALKIN) — a blocked hour isn't "booked" in the revenue sense.
+     */
+    async slotCounts(venueId: string, date: string): Promise<{ total: number; booked: number }> {
+      const r = await db.$queryRaw<{ total: number; booked: number }[]>`
+        SELECT count(*)::int AS total,
+               count(*) FILTER (WHERE status IN ('BOOKED_APP', 'BOOKED_WALKIN'))::int AS booked
+          FROM slots WHERE venue_id = ${venueId}::uuid AND business_date = ${date}::date`
+      return r[0] ?? { total: 0, booked: 0 }
+    },
+
+    /** Same as slotCounts but over a date range — the "X% booked this week" card on My Grounds. */
+    async slotCountsRange(
+      venueId: string,
+      from: string,
+      to: string,
+    ): Promise<{ total: number; booked: number }> {
+      const r = await db.$queryRaw<{ total: number; booked: number }[]>`
+        SELECT count(*)::int AS total,
+               count(*) FILTER (WHERE status IN ('BOOKED_APP', 'BOOKED_WALKIN'))::int AS booked
+          FROM slots
+         WHERE venue_id = ${venueId}::uuid AND business_date BETWEEN ${from}::date AND ${to}::date`
+      return r[0] ?? { total: 0, booked: 0 }
+    },
     gridBookings: (bookingIds: string[]) =>
       db.$queryRaw<
         Pick<

@@ -342,6 +342,7 @@ model Booking {
   status                  String
   paymentMode             String    @map("payment_mode")
   paymentStatus           String    @default("UNPAID") @map("payment_status")
+  paymentMethod           String    @default("CASH") @map("payment_method") // CASH | BANK_TRANSFER | FREE
   startAt                 DateTime  @map("start_at") @db.Timestamptz
   endAt                   DateTime  @map("end_at") @db.Timestamptz
   businessDate            DateTime  @map("business_date") @db.Date

@@ -131,7 +131,7 @@ export function createBookingController(m: BookingModule) {
     dayList: async (req: Req) => {
       const q = query(req)
       const r = await m.staff.dayList(vid(req), q)
-      return { ...successResponse(r.items), meta: meta(q, r.total) }
+      return { ...successResponse(r.items), meta: { ...meta(q, r.total), counts: r.counts } }
     },
     getBooking: async (req: Req) =>
       successResponse(await m.staff.getBooking(vid(req), params(req).id)),
@@ -169,6 +169,7 @@ export function createBookingController(m: BookingModule) {
           b.itemIds,
           b.reason,
           idempotencyKey(req, { uuid: true }),
+          b.cashRefundedMinor,
         ),
         'Cancelled',
       )
@@ -210,6 +211,33 @@ export function createBookingController(m: BookingModule) {
     removeFromBlocklist: async (req: Req) =>
       successResponse(
         await m.staff.removeFromBlocklist(vid(req), staffActor(req), params(req).phone),
+      ),
+
+    // ───────── cash drawer / daily closing ─────────
+    daySummary: async (req: Req) =>
+      successResponse(await m.closing.daySummary(vid(req), query(req).date)),
+    occupancy: async (req: Req) =>
+      successResponse(await m.closing.occupancy(vid(req), query(req).days)),
+    closeDay: async (req: Req, reply: Res) =>
+      reply
+        .status(201)
+        .send(
+          successResponse(
+            await m.closeDay.close(vid(req), staffActor(req), body(req)),
+            'Day closed',
+          ),
+        ),
+    getClosing: async (req: Req) =>
+      successResponse(await m.closing.getRecordedClosing(vid(req), params(req).date)),
+    reopenClosing: async (req: Req) =>
+      successResponse(
+        await m.closeDay.reopen(
+          vid(req),
+          staffActor(req),
+          params(req).date,
+          body(req).reason,
+        ),
+        'Day reopened',
       ),
 
     // ───────── admin ─────────

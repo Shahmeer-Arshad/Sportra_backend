@@ -143,6 +143,25 @@ function queries(db: Db) {
       ])
     },
 
+    /** One grouped query instead of N: court count per venue, for the My Grounds dashboard. */
+    courtCountsByVenueIds: async (venueIds: string[]) => {
+      const rows = await db.court.groupBy({
+        by: ['venueId'],
+        where: { venueId: { in: venueIds } },
+        _count: { _all: true },
+      })
+      return new Map(rows.map((r) => [r.venueId, r._count._all]))
+    },
+    /** Same, for pending change requests ("1 change needed"). */
+    pendingChangeCountsByVenueIds: async (venueIds: string[]) => {
+      const rows = await db.venueChangeRequest.groupBy({
+        by: ['venueId'],
+        where: { venueId: { in: venueIds }, status: 'PENDING' },
+        _count: { _all: true },
+      })
+      return new Map(rows.map((r) => [r.venueId, r._count._all]))
+    },
+
     // ───────── courts ─────────
     courtsOf: (venueId: string) =>
       db.court.findMany({ where: { venueId }, orderBy: { createdAt: 'asc' } }),

@@ -17,6 +17,7 @@ export interface NewBooking {
   status: 'PENDING_PAYMENT' | 'CONFIRMED'
   paymentMode: 'CASH_ONLY' | 'DEPOSIT_20' | 'FULL_ONLINE' | 'TOURNAMENT'
   paymentStatus?: 'UNPAID' | 'PAID'
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'FREE'
   startAt: Date
   endAt: Date
   businessDate: string
@@ -69,11 +70,11 @@ export function bookingQueries(db: Db) {
     async insertBooking(b: NewBooking): Promise<boolean> {
       const n = await db.$executeRaw`
         INSERT INTO bookings (id, ref, venue_id, court_id, user_id, source, customer_name, customer_phone, customer_email,
-          headcount, status, payment_mode, payment_status, start_at, end_at, business_date, total_minor, original_total_minor,
+          headcount, status, payment_mode, payment_status, payment_method, start_at, end_at, business_date, total_minor, original_total_minor,
           cash_collected_minor, slot_ids, hold_id, hold_expires_at, cancellation_cutoff_hours, created_by)
         VALUES (${b.id}::uuid, ${b.ref}, ${b.venueId}::uuid, ${b.courtId}::uuid, ${b.userId}::uuid, ${b.source},
           ${b.customerName}, ${b.customerPhone}, ${b.customerEmail ?? null}, ${b.headcount ?? null}, ${b.status},
-          ${b.paymentMode}, ${b.paymentStatus ?? 'UNPAID'}, ${b.startAt}, ${b.endAt}, ${b.businessDate}::date, ${b.totalMinor}, ${b.totalMinor},
+          ${b.paymentMode}, ${b.paymentStatus ?? 'UNPAID'}, ${b.paymentMethod ?? 'CASH'}, ${b.startAt}, ${b.endAt}, ${b.businessDate}::date, ${b.totalMinor}, ${b.totalMinor},
           ${b.cashCollectedMinor ?? 0n}, ${b.slotIds}::uuid[], ${b.holdId ?? null}::uuid, ${b.holdExpiresAt ?? null},
           ${b.cutoffHours}, ${b.createdBy}::uuid)
         ON CONFLICT (ref) DO NOTHING`
@@ -150,13 +151,30 @@ export function bookingQueries(db: Db) {
 
     async dayList(
       venueId: string,
-      q: { date?: string; status?: string; q?: string; limit: number; offset: number },
+      q: {
+        date?: string
+        from?: string
+        to?: string
+        status?: string
+        source?: string
+        q?: string
+        limit: number
+        offset: number
+      },
     ) {
       const status = q.status ? q.status.split(',').filter(Boolean) : null
+      const source = q.source ? q.source.split(',').filter(Boolean) : null
       const text = q.q ? `%${q.q.replace(/[\\%_]/g, (m) => `\\${m}`)}%` : null
       const where = Prisma.sql`venue_id = ${venueId}::uuid
-        ${q.date ? Prisma.sql`AND business_date = ${q.date}::date` : Prisma.empty}
+        ${
+          q.from && q.to
+            ? Prisma.sql`AND business_date BETWEEN ${q.from}::date AND ${q.to}::date`
+            : q.date
+              ? Prisma.sql`AND business_date = ${q.date}::date`
+              : Prisma.empty
+        }
         ${status ? Prisma.sql`AND status = ANY(${status}::text[])` : Prisma.sql`AND status NOT IN ('EXPIRED')`}
+        ${source ? Prisma.sql`AND source = ANY(${source}::text[])` : Prisma.empty}
         ${text ? Prisma.sql`AND (customer_name ILIKE ${text} OR customer_phone ILIKE ${text} OR ref ILIKE ${text})` : Prisma.empty}`
       const rows = await db.$queryRaw<BookingRowRaw[]>`
         SELECT ${BOOKING_COLS} FROM bookings WHERE ${where} ORDER BY start_at, created_at LIMIT ${q.limit} OFFSET ${q.offset}`
@@ -164,6 +182,67 @@ export function bookingQueries(db: Db) {
         db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM bookings WHERE ${where}`,
       )
       return { rows, total }
+    },
+
+    /** All / online (APP) / walk-in (WALKIN+MANUAL) counts for the Bookings page filter chips. */
+    async sourceCounts(
+      venueId: string,
+      range: { date?: string; from?: string; to?: string },
+    ): Promise<{ all: number; online: number; walkin: number }> {
+      const dateFilter =
+        range.from && range.to
+          ? Prisma.sql`AND business_date BETWEEN ${range.from}::date AND ${range.to}::date`
+          : range.date
+            ? Prisma.sql`AND business_date = ${range.date}::date`
+            : Prisma.empty
+      const r = await db.$queryRaw<{ all: number; online: number; walkin: number }[]>`
+        SELECT count(*)::int AS all,
+               count(*) FILTER (WHERE source = 'APP')::int AS online,
+               count(*) FILTER (WHERE source IN ('WALKIN', 'MANUAL'))::int AS walkin
+          FROM bookings WHERE venue_id = ${venueId}::uuid ${dateFilter} AND status NOT IN ('EXPIRED')`
+      return r[0] ?? { all: 0, online: 0, walkin: 0 }
+    },
+
+    /** "Bookings today" tile on the owner Home page: how many, how many already arrived. */
+    async bookingCountsForDay(
+      venueId: string,
+      date: string,
+    ): Promise<{ total: number; arrived: number; upcoming: number }> {
+      const r = await db.$queryRaw<{ total: number; arrived: number; upcoming: number }[]>`
+        SELECT count(*)::int AS total,
+               count(*) FILTER (WHERE status IN ('CHECKED_IN', 'COMPLETED'))::int AS arrived,
+               count(*) FILTER (WHERE status = 'CONFIRMED')::int AS upcoming
+          FROM bookings WHERE venue_id = ${venueId}::uuid AND business_date = ${date}::date
+            AND status NOT IN ('EXPIRED')`
+      return r[0] ?? { total: 0, arrived: 0, upcoming: 0 }
+    },
+
+    /** Sum of what's still owed at the venue for the day's active bookings (POS day-summary tile). */
+    async stillToCollectForDay(
+      venueId: string,
+      date: string,
+    ): Promise<{ amountMinor: bigint; bookingCount: number }> {
+      const r = await db.$queryRaw<{ amount_minor: bigint; booking_count: number }[]>`
+        SELECT COALESCE(SUM(balance_due_minor), 0)::bigint AS amount_minor,
+               count(*) FILTER (WHERE balance_due_minor > 0)::int AS booking_count
+          FROM bookings
+         WHERE venue_id = ${venueId}::uuid AND business_date = ${date}::date
+           AND status IN ('CONFIRMED', 'CHECKED_IN')`
+      return { amountMinor: r[0].amount_minor, bookingCount: r[0].booking_count }
+    },
+
+    /** Next few not-yet-checked-in bookings today, soonest first, for the "arriving next" rail. */
+    async arrivingNext(venueId: string, date: string, now: Date, limit: number) {
+      return db.$queryRaw<
+        Pick<
+          BookingRowRaw,
+          'id' | 'ref' | 'source' | 'customer_name' | 'start_at' | 'balance_due_minor' | 'court_id'
+        >[]
+      >`
+        SELECT id, ref, source, customer_name, start_at, balance_due_minor, court_id FROM bookings
+         WHERE venue_id = ${venueId}::uuid AND business_date = ${date}::date AND status = 'CONFIRMED'
+           AND start_at >= ${now}
+         ORDER BY start_at LIMIT ${limit}`
     },
 
     // ───────── names and contacts ─────────

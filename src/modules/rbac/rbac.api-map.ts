@@ -123,6 +123,11 @@ export const API_MAP: readonly Row[] = [
   ['GET', `${V}/blocklist`, 'pos.blocklist_read', 'List blocked phones'],
   ['POST', `${V}/blocklist`, 'pos.blocklist_add', 'Block a phone'],
   ['DELETE', `${V}/blocklist/:phone`, 'pos.blocklist_remove', 'Unblock a phone'],
+  ['GET', `${V}/day-summary`, 'pos.day_summary_read', 'Live grid cash/booking summary for a day'],
+  ['GET', `${V}/occupancy`, 'pos.occupancy_read', 'Rolling occupancy %, for the My Grounds cards'],
+  ['POST', `${V}/closings`, 'pos.closing_create', 'Close the day (cash reconciliation)'],
+  ['GET', `${V}/closings/:date`, 'pos.closing_read', "See a day's closing record"],
+  ['POST', `${V}/closings/:date/reopen`, 'pos.closing_reopen', 'Reopen a closed day'],
 
   // ───────────── admin ─────────────
   ['GET', '/api/v1/admin/users', 'user.read', 'List users'],

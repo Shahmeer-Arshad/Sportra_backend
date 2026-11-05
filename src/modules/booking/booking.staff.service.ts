@@ -4,12 +4,27 @@
  * path, so staff of venue A can never touch venue B's bookings.
  */
 import { env } from '../../config/env'
+import { addDays, todayIn } from '../../lib/time'
 import { NotFoundError } from '../../utils/errors'
 import { isLikelyNoShow, normalizePhone } from './booking.domain'
 import { BookingQueries } from './booking.repository'
 import { assertCourtsOfVenue, namesOf, parseWindow, staffBooking } from './booking.rules'
 import { bookingJson, manualCallJson, outageJson } from './booking.view'
 import { StaffActor } from './mediators/cancel-booking.mediator'
+
+/** "Today / Tomorrow / This week" tabs on the Bookings page, resolved to a venue-local date window. */
+async function resolveRange(repo: BookingQueries, venueId: string, range?: string) {
+  if (!range || range === 'all') return {}
+  const venue = await repo.venueById(venueId)
+  const today = todayIn(venue?.timezone)
+  if (range === 'today') return { from: today, to: today }
+  if (range === 'tomorrow') {
+    const t = addDays(today, 1)
+    return { from: t, to: t }
+  }
+  if (range === 'week') return { from: today, to: addDays(today, 6) }
+  return {}
+}
 
 export function createStaffService(repo: BookingQueries) {
   const noShowFlag = (r: { status: string; start_at: Date }, now: Date) =>
@@ -29,9 +44,22 @@ export function createStaffService(repo: BookingQueries) {
     // ───────── bookings ─────────
     async dayList(
       venueId: string,
-      q: { date?: string; status?: string; q?: string; limit: number; offset: number },
+      q: {
+        date?: string
+        range?: 'today' | 'tomorrow' | 'week' | 'all'
+        status?: string
+        source?: string
+        q?: string
+        limit: number
+        offset: number
+      },
     ) {
-      const { rows, total } = await repo.dayList(venueId, q)
+      const window = await resolveRange(repo, venueId, q.range)
+      const listQuery = { ...q, ...window }
+      const [{ rows, total }, counts] = await Promise.all([
+        repo.dayList(venueId, listQuery),
+        repo.sourceCounts(venueId, window.from ? window : { date: q.date }),
+      ])
       const now = await repo.clock()
       const cn = new Map((await repo.courtNamesOfVenue(venueId)).map((c) => [c.id, c.name]))
       return {
@@ -39,6 +67,7 @@ export function createStaffService(repo: BookingQueries) {
           ...bookingJson(r, { now, courtName: cn.get(r.court_id) }),
           likelyNoShow: noShowFlag(r, now),
         })),
+        counts,
         total,
       }
     },
